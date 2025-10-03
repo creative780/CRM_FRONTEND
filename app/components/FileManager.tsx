@@ -119,9 +119,10 @@ const FileManager: React.FC<FileManagerProps> = ({
       setFiles(prev => [newFile, ...prev]);
       onFilesChange?.([newFile, ...files]);
       toast.success('File uploaded successfully!');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Upload failed:', error);
-      toast.error(`Upload failed: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Upload failed: ${errorMessage}`);
     } finally {
       setUploading(false);
       event.target.value = '';
@@ -136,9 +137,10 @@ const FileManager: React.FC<FileManagerProps> = ({
       setFiles(prev => prev.filter(f => f.id !== fileId));
       onFilesChange?.(files.filter(f => f.id !== fileId));
       toast.success('File deleted successfully!');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Delete failed:', error);
-      toast.error(`Delete failed: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Delete failed: ${errorMessage}`);
     }
   };
 
@@ -164,9 +166,10 @@ const FileManager: React.FC<FileManagerProps> = ({
 
       setEditingFile(null);
       toast.success('File updated successfully!');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Update failed:', error);
-      toast.error(`Update failed: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Update failed: ${errorMessage}`);
     }
   };
 

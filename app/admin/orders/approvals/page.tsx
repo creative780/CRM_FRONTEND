@@ -459,8 +459,9 @@ export default function SalesApprovalPage() {
       setSelectedApproval(null);
       await loadApprovals();
       
-    } catch (error: any) {
-      toast.error(`Failed to ${action}: ${error.message}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to ${action}: ${errorMessage}`);
     } finally {
       setProcessing(false);
     }

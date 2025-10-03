@@ -149,7 +149,8 @@ export default function ProductionDashboard() {
       
     } catch (error) {
       console.error('Failed to fetch production orders:', error);
-      toast.error(`Failed to load production orders: ${error.message}`, {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to load production orders: ${errorMessage}`, {
         icon: '❌'
       });
     } finally {

@@ -170,8 +170,9 @@ export default function DesignerOrdersTablePage() {
       }]);
 
       toast.success('File uploaded successfully!');
-    } catch (error: any) {
-      toast.error(`Upload failed: ${error.message}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Upload failed: ${errorMessage}`);
     } finally {
       setUploadingFile(false);
       event.target.value = '';
@@ -203,8 +204,9 @@ export default function DesignerOrdersTablePage() {
       toast.success('Approval request sent to sales!');
       setIsOpen(false);
       await fetchOrders();
-    } catch (error: any) {
-      toast.error(`Failed to request approval: ${error.message}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to request approval: ${errorMessage}`);
     } finally {
       setRequestingApproval(false);
     }
@@ -222,8 +224,9 @@ export default function DesignerOrdersTablePage() {
       toast.success('Order sent to production successfully!');
       setIsOpen(false);
       await fetchOrders();
-    } catch (error: any) {
-      toast.error(`Failed to send to production: ${error.message}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to send to production: ${errorMessage}`);
     } finally {
       setSendingToProduction(false);
     }

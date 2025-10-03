@@ -248,8 +248,9 @@ export default function ProductionOrdersTablePage() {
 
       toast.success('Machines assigned successfully!');
       await fetchOrders(); // Refresh orders
-    } catch (error: any) {
-      toast.error(`Failed to assign machines: ${error.message}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to assign machines: ${errorMessage}`);
     } finally {
       setAssigningMachines(false);
     }
@@ -283,8 +284,9 @@ export default function ProductionOrdersTablePage() {
       toast.success('Order confirmed and sent to admin!');
       setIsOpen(false);
       await fetchOrders(); // Refresh orders
-    } catch (error: any) {
-      toast.error(`Failed to confirm order: ${error.message}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to confirm order: ${errorMessage}`);
     } finally {
       setConfirmingOrder(false);
     }

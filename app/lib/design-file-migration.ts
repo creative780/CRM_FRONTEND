@@ -9,7 +9,7 @@ export interface StoredFileMeta {
   name: string;
   size: number;
   type: string;
-  url: string;
+  url?: string;
   lastModified: number;
 }
 
@@ -37,7 +37,7 @@ export function convertStorageFilesToFiles(storageFiles: StoredFileMeta[]): File
   for (const storageFile of storageFiles) {
     try {
       // For base64 data URLs, we need to fetch and convert to File
-      if (storageFile.url.startsWith('data:')) {
+      if (storageFile.url && storageFile.url.startsWith('data:')) {
         fetch(storageFile.url)
           .then(response => response.blob())
           .then(blob => {

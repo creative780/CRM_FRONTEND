@@ -203,8 +203,9 @@ export default function AdminOrdersTablePage() {
       toast.success('Design approved successfully!');
       await fetchOrders();
       setIsOpen(false);
-    } catch (error: any) {
-      toast.error(`Failed to approve: ${error.message}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to approve: ${errorMessage}`);
     } finally {
       setProcessing(false);
     }
@@ -222,8 +223,9 @@ export default function AdminOrdersTablePage() {
       toast.success(`Status changed to ${newStatus}!`);
       await fetchOrders();
       setIsOpen(false);
-    } catch (error: any) {
-      toast.error(`Failed to change status: ${error.message}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to change status: ${errorMessage}`);
     } finally {
       setProcessing(false);
     }
