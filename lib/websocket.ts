@@ -13,7 +13,7 @@ export const useMonitoringWebSocket = () => {
   const [error, setError] = useState<Event | null>(null);
   const handlers = useRef(new Map<string, Set<MessageHandler>>());
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://api.crm.click2print.store";
   const WS_URL = API_BASE.replace('http', 'ws') + '/ws/monitoring/';
 
   const subscribe = useCallback((type: string, handler: MessageHandler) => {

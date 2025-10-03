@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { getToken } from "@/lib/auth";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://api.crm.click2print.store";
 
 interface AnalyticsData {
   overview: {

@@ -50,7 +50,7 @@ async function fetchDeviceIdFromAgent(): Promise<string | null> {
 }
 
 export async function login(username: string, password: string, role: Role) {
-  const base = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000';
+  const base = process.env.NEXT_PUBLIC_API_BASE || 'https://api.crm.click2print.store';
   
   // Try to get device ID from agent first, then fallback to localStorage/cookies
   let deviceId = null;

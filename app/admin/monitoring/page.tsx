@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import DashboardNavbar from "@/app/components/navbar/DashboardNavbar";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_MONITORING_API_BASE || "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_MONITORING_API_BASE || "https://api.crm.click2print.store";
 const CAPTURE_EVERY_MS = 3000;
 type CaptureMode = "all" | "custom";
 

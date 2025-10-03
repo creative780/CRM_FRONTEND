@@ -181,7 +181,7 @@ const LoginPage = () => {
       setLoading(true);
 
       const role: Role = selectedRole || DEFAULT_ROLE;
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "https://api.crm.click2print.store";
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       // ALWAYS fetch device ID from agent API (no localStorage fallback)
       console.log('🔄 Fetching device ID from agent...');

@@ -16,7 +16,7 @@ function normalizeBase(base?: string | null): string | null {
 }
 
 // Resolve the API base. If an environment variable is provided, use it;
-// otherwise, default to http://localhost:8000. This ensures all API
+// otherwise, default to https://api.crm.click2print.store. This ensures all API
 // requests go to Django in development and avoids 404s from Next.js.
 function resolveBase(preferred: string | null | undefined): string | null {
   if (preferred) return preferred;

@@ -1,6 +1,6 @@
 ﻿import { BaseProduct, ProductAttribute } from "@/app/types/products";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://api.crm.click2print.store";
 
 export async function searchProducts(q: string): Promise<BaseProduct[]> {
   try {

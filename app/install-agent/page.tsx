@@ -102,7 +102,7 @@ export default function InstallAgentPage() {
       setError("");
       
       // Download from the backend API
-      const downloadUrl = `${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'}/api/agent/download${enrollmentToken ? `?token=${enrollmentToken}` : ''}`;
+      const downloadUrl = `${process.env.NEXT_PUBLIC_API_BASE || 'https://api.crm.click2print.store'}/api/agent/download${enrollmentToken ? `?token=${enrollmentToken}` : ''}`;
       const response = await fetch(downloadUrl, {
         method: 'GET',
         headers: {
