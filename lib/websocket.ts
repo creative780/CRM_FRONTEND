@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { getApiBaseUrl } from './env';
 
 interface WebSocketMessage {
   type: string;
@@ -13,7 +14,7 @@ export const useMonitoringWebSocket = () => {
   const [error, setError] = useState<Event | null>(null);
   const handlers = useRef(new Map<string, Set<MessageHandler>>());
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://api.crm.click2print.store";
+  const API_BASE = getApiBaseUrl();
   const WS_URL = API_BASE.replace('http', 'ws') + '/ws/monitoring/';
 
   const subscribe = useCallback((type: string, handler: MessageHandler) => {

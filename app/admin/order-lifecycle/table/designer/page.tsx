@@ -5,6 +5,7 @@ import { Dialog, Transition } from "@headlessui/react";
 import { Button } from "@/app/components/Button";
 import DashboardNavbar from "@/app/components/navbar/DashboardNavbar";
 import { ordersApi, Order } from "@/lib/orders-api";
+import { getApiBaseUrl } from "@/lib/env";
 import { toast } from "react-hot-toast";
 import { Trash2, CheckCircle, XCircle, Clock, FileText, User, Calendar, Upload, Send, Package, Eye } from "lucide-react";
 import DesignFilePreview from '@/app/components/DesignFilePreview';
@@ -233,7 +234,7 @@ export default function DesignerView() {
 
   const checkApprovalStatus = async (orderId: number) => {
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://127.0.0.1:8000';
+      const apiBase = getApiBaseUrl();
       const response = await fetch(`${apiBase}/api/orders/${orderId}/design-approvals/`, {
         method: 'GET',
         headers: {
@@ -521,7 +522,7 @@ export default function DesignerView() {
 
   const updateDesignStatus = async (orderId: number, itemId: number, designReady: boolean) => {
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://127.0.0.1:8000';
+      const apiBase = getApiBaseUrl();
       const response = await fetch(`${apiBase}/api/orders/${orderId}/items/${itemId}/`, {
         method: 'PATCH',
         headers: {

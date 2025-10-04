@@ -11,6 +11,7 @@ import ProductConfigModal from "../../components/modals/ProductConfigModal";
 import { BaseProduct, ConfiguredProduct } from "../../types/products";
 import { getProductById } from "../../lib/products";
 import { clearFilesFromStorage } from "../../lib/fileStorage";
+import { getApiBaseUrl, isProduction } from "@/lib/env";
 /* ────────────────────────────────────────────────────────────────────────────
    Stage components
 --------------------------------------------------------------------------- */
@@ -504,7 +505,7 @@ export default function OrderLifecyclePage() {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     setDeliveryCode(code);
     setFormData((prev: any) => ({ ...prev, deliveryCode: code }));
-    const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
+    const apiBase = getApiBaseUrl();
     const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
     await fetch(`${apiBase}/api/send-delivery-code`, {
       method: "POST",
@@ -526,7 +527,7 @@ export default function OrderLifecyclePage() {
       return;
     }
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
+      const apiBase = getApiBaseUrl();
       const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
       const form = new FormData();
       form.append("photo", riderPhoto);
@@ -584,7 +585,7 @@ export default function OrderLifecyclePage() {
     }
 
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
+      const apiBase = getApiBaseUrl();
       const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
       
       // Get the first product's SKU and quantity, or use defaults
@@ -635,7 +636,7 @@ export default function OrderLifecyclePage() {
       
     } catch (e: any) {
       toast.error(`Failed to mark printed: ${e.message}`);
-      if (process.env.NODE_ENV !== "production") {
+      if (!isProduction) {
         console.error("Mark printed error:", e);
       }
     }
@@ -644,7 +645,7 @@ export default function OrderLifecyclePage() {
   // Auto-save function for when pressing Next button
   const handleAutoSave = async (): Promise<boolean> => {
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
+      const apiBase = getApiBaseUrl();
       const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
       const headers: any = { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 
@@ -915,7 +916,7 @@ export default function OrderLifecyclePage() {
 
   const handleSaveOrder = async () => {
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
+      const apiBase = getApiBaseUrl();
       const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
       const headers: any = { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 
@@ -1128,7 +1129,7 @@ export default function OrderLifecyclePage() {
       }
 
       try {
-        const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
+        const apiBase = getApiBaseUrl();
         const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
         const headers: any = { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 
@@ -1321,7 +1322,7 @@ export default function OrderLifecyclePage() {
 
   const ensureOrderExists = async (): Promise<number | null> => {
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
+      const apiBase = getApiBaseUrl();
       const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
       const headers: any = { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 
@@ -1353,7 +1354,7 @@ export default function OrderLifecyclePage() {
     if (busyDraft) return;
     setBusyDraft(true);
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
+      const apiBase = getApiBaseUrl();
       const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
       const headers: any = { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 
@@ -1393,7 +1394,7 @@ export default function OrderLifecyclePage() {
     if (busySend) return;
     setBusySend(true);
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
+      const apiBase = getApiBaseUrl();
       const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
       const headers: any = { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 

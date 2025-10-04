@@ -1,4 +1,5 @@
 import { Role } from "@/types/api";
+import { getApiBaseUrl } from "./env";
 
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -50,7 +51,7 @@ async function fetchDeviceIdFromAgent(): Promise<string | null> {
 }
 
 export async function login(username: string, password: string, role: Role) {
-  const base = process.env.NEXT_PUBLIC_API_BASE || 'https://api.crm.click2print.store';
+  const base = getApiBaseUrl();
   
   // Try to get device ID from agent first, then fallback to localStorage/cookies
   let deviceId = null;

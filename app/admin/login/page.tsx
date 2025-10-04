@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 // Switched from Firebase demo auth to backend JWT auth
 import { toast } from "react-hot-toast";
+import { getApiBaseUrl } from "@/lib/env";
 
 type Role = "admin" | "sales" | "designer" | "production";;
 const ROLES: Role[] = ["admin", "sales", "designer", "production"];
@@ -181,7 +182,7 @@ const LoginPage = () => {
       setLoading(true);
 
       const role: Role = selectedRole || DEFAULT_ROLE;
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "https://api.crm.click2print.store";
+      const apiBase = getApiBaseUrl();
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       // ALWAYS fetch device ID from agent API (no localStorage fallback)
       console.log('🔄 Fetching device ID from agent...');

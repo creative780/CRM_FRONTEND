@@ -5,6 +5,7 @@ import { Plus, Minus, X } from "lucide-react";
 import ProductSearchModal from "../modals/ProductSearchModal";
 import ProductConfigModal from "../modals/ProductConfigModal";
 import { BaseProduct, ConfiguredProduct } from "../../types/products";
+import { isProduction } from "@/lib/env";
 
 // TypeScript fix for html2pdf global
 declare global {
@@ -39,11 +40,11 @@ export default function QuotationPreview({
     const checkLoaded = () => {
       if (window.html2pdf) {
         setIsPDFReady(true);
-        if (process.env.NODE_ENV !== "production") {
+        if (!isProduction) {
           console.log("✅ html2pdf.js loaded");
         }
       } else {
-        if (process.env.NODE_ENV !== "production") {
+        if (!isProduction) {
           console.warn("Retrying html2pdf load check...");
         }
         setTimeout(checkLoaded, 300);
@@ -55,7 +56,7 @@ export default function QuotationPreview({
     script.async = true;
     script.onload = checkLoaded;
     script.onerror = () => {
-      if (process.env.NODE_ENV !== "production") {
+      if (!isProduction) {
         console.error("❌ Failed to load html2pdf.js");
       }
     };
@@ -74,7 +75,7 @@ export default function QuotationPreview({
 
     if (typeof window.html2pdf === "undefined") {
       if (attempt < 4) {
-        if (process.env.NODE_ENV !== "production") {
+        if (!isProduction) {
           console.warn(`🕐 Attempt ${attempt}: Waiting for html2pdf...`);
         }
         setTimeout(() => handleDownloadPDF(attempt + 1), 300);
@@ -115,7 +116,7 @@ export default function QuotationPreview({
       navigator
         .share(shareData)
         .catch((err) => {
-          if (process.env.NODE_ENV !== "production") {
+          if (!isProduction) {
             console.error("Share failed:", err);
           }
         });
@@ -362,7 +363,7 @@ export default function QuotationPreview({
               <button
                 className="px-4 py-2 bg-[#891F1A] text-white rounded hover:bg-[#6e1714]"
                 onClick={() => {
-                  if (process.env.NODE_ENV !== "production") {
+                  if (!isProduction) {
                     console.log("Edit requested:", editNotes);
                   }
                   alert("Edit request submitted!");

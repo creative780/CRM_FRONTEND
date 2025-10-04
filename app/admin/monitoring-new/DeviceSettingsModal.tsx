@@ -25,7 +25,9 @@ import {
 } from "lucide-react";
 import { getToken } from "@/lib/auth";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://api.crm.click2print.store";
+import { getApiBaseUrl } from '@/lib/env';
+
+const API_BASE = getApiBaseUrl();
 
 interface Device {
   id: string;

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { getApiBaseUrl } from "@/lib/env";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -102,7 +103,7 @@ export default function InstallAgentPage() {
       setError("");
       
       // Download from the backend API
-      const downloadUrl = `${process.env.NEXT_PUBLIC_API_BASE || 'https://api.crm.click2print.store'}/api/agent/download${enrollmentToken ? `?token=${enrollmentToken}` : ''}`;
+      const downloadUrl = `${getApiBaseUrl()}/api/agent/download${enrollmentToken ? `?token=${enrollmentToken}` : ''}`;
       const response = await fetch(downloadUrl, {
         method: 'GET',
         headers: {

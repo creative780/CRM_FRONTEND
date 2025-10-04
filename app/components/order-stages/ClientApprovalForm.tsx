@@ -7,6 +7,7 @@ import { CheckCircle } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useEffect } from "react";
 import { saveFileMetaToStorage, loadFileMetaFromStorage, clearFilesFromStorage } from "@/app/lib/fileStorage";
+import { isProduction } from "@/lib/env";
 
 export default function ClientApprovalForm({ formData, setFormData }: any) {
   const clientApprovalFiles = formData.clientApprovalFiles || [];
@@ -153,7 +154,7 @@ export default function ClientApprovalForm({ formData, setFormData }: any) {
             variant="default"
             className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold shadow"
             onClick={() => {
-              if (process.env.NODE_ENV !== "production") {
+              if (!isProduction) {
                 console.log("Saved formData:", formData);
               }
               toast.success("Client Review & Approval section saved!");

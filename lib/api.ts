@@ -8,6 +8,8 @@
 // confusing HTTP errors in local development when the backend is
 // reachable through a proxy (e.g. via `/api/…`).
 
+import { getApiBaseUrl } from './env';
+
 function normalizeBase(base?: string | null): string | null {
   if (!base) return null;
   const trimmed = base.trim();
@@ -41,12 +43,13 @@ function joinBaseAndPath(base: string, path: string): string {
 function buildUrl(path: string): { primary: string; fallback: string; crossOrigin: boolean } {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   const isMonitoring = /^\/monitoring\//.test(path);
-  const CRM_BASE_ENV = normalizeBase((process as any).env?.NEXT_PUBLIC_API_BASE || null);
-  const MON_BASE_ENV = normalizeBase((process as any).env?.NEXT_PUBLIC_MONITORING_API_BASE || CRM_BASE_ENV || null);
-  const base = resolveBase(isMonitoring ? MON_BASE_ENV : CRM_BASE_ENV);
+  
+  // Use the centralized environment configuration
+  const base = resolveBase(getApiBaseUrl(isMonitoring));
   if (!base) {
     return { primary: normalizedPath, fallback: normalizedPath, crossOrigin: false };
   }
+  
   const requestPath = isMonitoring ? normalizedPath.replace(/^\/monitoring\//, '/') : normalizedPath;
   const primary = joinBaseAndPath(base, requestPath);
   let crossOrigin = false;
@@ -248,9 +251,8 @@ const upload = <T = any>(path: string, form: FormData, init: RequestInit = {}) =
 function resolveUploadUrl(p?: string): string {
   if (!p) return '';
   if (p.startsWith('/uploads/')) {
-    const CRM_BASE_ENV = normalizeBase((process as any).env?.NEXT_PUBLIC_API_BASE || null);
-    const MON_BASE_ENV = normalizeBase((process as any).env?.NEXT_PUBLIC_MONITORING_API_BASE || CRM_BASE_ENV || null);
-    const base = resolveBase(MON_BASE_ENV);
+    // Use the centralized environment configuration for monitoring API
+    const base = resolveBase(getApiBaseUrl(true));
     return base ? `${base}${p}` : p;
   }
   return p;

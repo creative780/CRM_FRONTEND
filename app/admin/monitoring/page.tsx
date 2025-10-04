@@ -15,7 +15,9 @@ import {
 } from "lucide-react";
 import DashboardNavbar from "@/app/components/navbar/DashboardNavbar";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_MONITORING_API_BASE || "https://api.crm.click2print.store";
+import { getApiBaseUrl, isProduction } from '@/lib/env';
+
+const API_BASE = getApiBaseUrl(true); // Use monitoring API
 const CAPTURE_EVERY_MS = 3000;
 type CaptureMode = "all" | "custom";
 
@@ -494,7 +496,7 @@ export default function EmployeeMonitoringWithLogin() {
             const idx = String(i + 1).padStart(3, "0");
             sFolder.file(`screenshot_${idx}.jpg`, blob);
           } catch (e) {
-            if (process.env.NODE_ENV !== "production") {
+            if (!isProduction) {
               console.warn("Failed to fetch screenshot:", url, e);
             }
           }
@@ -517,7 +519,7 @@ export default function EmployeeMonitoringWithLogin() {
               blob.type.includes("avi") ? "avi" : "bin";
             vFolder!.file(`segment_${idx}.${ext}`, blob);
           } catch (e) {
-            if (process.env.NODE_ENV !== "production") {
+            if (!isProduction) {
               console.warn("Video fetch failed:", vurl, e);
             }
           }
@@ -532,7 +534,7 @@ export default function EmployeeMonitoringWithLogin() {
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 1500);
     } catch (e) {
-      if (process.env.NODE_ENV !== "production") {
+      if (!isProduction) {
         console.error(e);
       }
       alert("Failed to prepare archive. Make sure 'jszip' is installed.");
