@@ -677,35 +677,45 @@ export default function OrdersTablePage() {
 
   const Section = ({ title, rows }: { title: string; rows: Row[] }) => (
     <section className="rounded-xl border bg-white shadow-sm overflow-hidden">
-      <div className="px-4 py-4">
-        <h2 className="text-2xl font-bold text-[#891F1A]">{title}</h2>
+      <div className="px-4 py-4 bg-gray-50 border-b">
+        <h2 className="text-xl font-bold text-[#891F1A] flex items-center gap-2">
+          {title}
+          <span className="text-sm font-normal text-gray-600">({rows.length})</span>
+        </h2>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
+        <table className="min-w-full text-sm text-center border-collapse">
           <thead>
-            <tr className="bg-[#7a1b17] text-white">
-              <th className="px-3 py-3 text-center w-20">Sr No</th>
-              <th className="px-3 py-3 text-center w-36">Order Id</th>
-              <th className="px-3 py-3 text-center">Order</th>
-              <th className="px-3 py-3 text-center w-36">Date</th>
-              <th className="px-3 py-3 text-center w-28">Time</th>
-              <th className="px-3 py-3 text-center w-40">Urgency</th>
-              <th className="px-3 py-3 text-center w-24">Actions</th>
+            <tr className="bg-[#7a1b17] text-white rounded-t-lg w-full">
+              <th className="px-3 py-3 text-center w-20 min-w-[80px] rounded-tl-lg">Sr No</th>
+              <th className="px-3 py-3 text-center w-36 min-w-[140px]">Order Id</th>
+              <th className="px-3 py-3 text-center min-w-[200px]">Order Details</th>
+              <th className="px-3 py-3 text-center w-36 min-w-[120px]">Date</th>
+              <th className="px-3 py-3 text-center w-28 min-w-[100px]">Time</th>
+              <th className="px-3 py-3 text-center w-40 min-w-[120px]">Urgency</th>
+              <th className="px-3 py-3 text-center w-24 min-w-[120px] rounded-tr-lg relative">
+                <div className="absolute inset-0 bg-[#7a1b17] rounded-tr-lg"></div>
+                <div className="relative z-10">Actions</div>
+              </th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td className="px-3 py-6 text-center text-gray-400" colSpan={7}>
+                <td className="px-3 py-8 text-center text-gray-500" colSpan={7}>
                   No records
                 </td>
               </tr>
             ) : (
               rows.map((r, i) => (
-                <tr key={r.id} className="border-b hover:bg-gray-50">
+                <tr 
+                  key={r.id} 
+                  className="border-b hover:bg-gray-50 cursor-pointer transition-colors"
+                  onClick={() => openForRow(r)}
+                >
                   <td className="px-3 py-3 text-center">{i + 1}</td>
                   <td className="px-3 py-3 text-center font-medium text-gray-900">{r.orderCode}</td>
-                  <td className="px-3 py-3 text-center cursor-pointer" onClick={() => openForRow(r)}>
+                  <td className="px-3 py-3 text-center max-w-[200px] truncate" title={r.title}>
                     {r.title}
                   </td>
                   <td className="px-3 py-3 text-center">{normalizeToYMD(r.date) || r.date}</td>
@@ -748,9 +758,8 @@ export default function OrdersTablePage() {
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12 text-black">
-      {/* Navbar */}
       <DashboardNavbar />
-      <div className="h-4 sm:h-5 md:h-6" />
+      <br />
 
       <div className="max-w-7xl mx-auto pb-16">
         <div className="flex items-center justify-between mt-2">

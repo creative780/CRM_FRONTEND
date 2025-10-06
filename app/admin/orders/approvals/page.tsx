@@ -508,11 +508,10 @@ export default function SalesApprovalPage() {
   };
 
   return (
-    <>
+    <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
       <DashboardNavbar />
-      
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-4 py-8">
+      <br />
+      <div className="container mx-auto">
           {/* Header */}
           <div className="mb-8 text-center">
             <h1 className="text-4xl font-bold text-gray-900 mb-2">Design Approval Center</h1>
@@ -668,6 +667,6 @@ export default function SalesApprovalPage() {
           />
         </div>
       </div>
-    </>
+    </div>
   );
 }

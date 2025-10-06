@@ -264,6 +264,9 @@ export default function EmployeeManagementPage() {
     role: "sales" as "admin" | "sales" | "designer" | "production",
     branch: "dubai" as Branch,
     image: "https://randomuser.me/api/portraits/men/1.jpg", // Default image
+    // Authentication fields
+    username: "",
+    password: "",
   });
 
   // Load employees from localStorage on component mount
@@ -293,52 +296,92 @@ export default function EmployeeManagementPage() {
   const employeeOptions = allEmployees.filter((emp) => emp.branch === filter);
 
   // Handle adding new employee
-  const handleAddEmployee = () => {
+  const handleAddEmployee = async () => {
     if (
       !newEmployee.name ||
       !newEmployee.email ||
       !newEmployee.phone ||
       !newEmployee.salary ||
       !newEmployee.designation ||
-      !newEmployee.role
+      !newEmployee.role ||
+      !newEmployee.username ||
+      !newEmployee.password
     ) {
-      toast.error("Please fill in all required fields");
+      toast.error("Please fill in all required fields including username and password");
       return;
     }
 
-    const newEmp: Employee = {
-      id: Date.now(), // Simple ID generation
-      name: newEmployee.name,
-      email: newEmployee.email,
-      phone: newEmployee.phone,
-      salary: parseInt(newEmployee.salary),
-      status: newEmployee.status,
-      designation: newEmployee.designation,
-      role: newEmployee.role,
-      branch: newEmployee.branch,
-      image: newEmployee.image,
-    };
+    try {
+      // Create employee via API
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+      const response = await fetch(`${apiBase}/api/hr/employees`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+        },
+        body: JSON.stringify({
+          name: newEmployee.name,
+          email: newEmployee.email,
+          phone: newEmployee.phone,
+          salary: parseFloat(newEmployee.salary),
+          status: newEmployee.status,
+          designation: newEmployee.designation,
+          role: newEmployee.role,
+          branch: newEmployee.branch,
+          image: newEmployee.image,
+          username: newEmployee.username,
+          password: newEmployee.password,
+        }),
+      });
 
-    const updatedEmployees = [...allEmployees, newEmp];
-    setAllEmployees(updatedEmployees);
-    localStorage.setItem("employees", JSON.stringify(updatedEmployees));
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create employee');
+      }
 
-    toast.success(`Employee ${newEmp.name} added successfully!`);
+      const createdEmployee = await response.json();
+      
+      // Also add to local state for immediate UI update
+      const newEmp: Employee = {
+        id: createdEmployee.id || Date.now(),
+        name: createdEmployee.name,
+        email: createdEmployee.email,
+        phone: createdEmployee.phone,
+        salary: createdEmployee.salary,
+        status: createdEmployee.status,
+        designation: createdEmployee.designation,
+        role: createdEmployee.role,
+        branch: createdEmployee.branch,
+        image: createdEmployee.image,
+      };
 
-    // Reset form
-    setNewEmployee({
-      name: "",
-      email: "",
-      phone: "",
-      salary: "",
-      status: "Active" as "Active" | "On Leave",
-      designation: "",
-      role: "sales",
-      branch: "dubai",
-      image: "https://randomuser.me/api/portraits/men/1.jpg",
-    });
+      const updatedEmployees = [...allEmployees, newEmp];
+      setAllEmployees(updatedEmployees);
+      localStorage.setItem("employees", JSON.stringify(updatedEmployees));
 
-    setIsAddEmployeeOpen(false);
+      toast.success(`Employee ${newEmp.name} added successfully with login credentials!`);
+
+      // Reset form
+      setNewEmployee({
+        name: "",
+        email: "",
+        phone: "",
+        salary: "",
+        status: "Active" as "Active" | "On Leave",
+        designation: "",
+        role: "sales",
+        branch: "dubai",
+        image: "https://randomuser.me/api/portraits/men/1.jpg",
+        username: "",
+        password: "",
+      });
+
+      setIsAddEmployeeOpen(false);
+    } catch (error) {
+      console.error('Error creating employee:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create employee');
+    }
   };
 
   return (
@@ -782,6 +825,60 @@ export default function EmployeeManagementPage() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Authentication Section */}
+              <div className="bg-blue-50 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  Login Credentials
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="username"
+                      className="text-sm font-medium text-gray-700"
+                    >
+                      Username *
+                    </Label>
+                    <Input
+                      id="username"
+                      value={newEmployee.username}
+                      onChange={(e) =>
+                        setNewEmployee({
+                          ...newEmployee,
+                          username: e.target.value,
+                        })
+                      }
+                      placeholder="Enter username for login"
+                      className="h-11 border-gray-300 focus:border-[#891F1A] focus:ring-[#891F1A] transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="password"
+                      className="text-sm font-medium text-gray-700"
+                    >
+                      Password *
+                    </Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={newEmployee.password}
+                      onChange={(e) =>
+                        setNewEmployee({
+                          ...newEmployee,
+                          password: e.target.value,
+                        })
+                      }
+                      placeholder="Enter password for login"
+                      className="h-11 border-gray-300 focus:border-[#891F1A] focus:ring-[#891F1A] transition-colors"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  These credentials will be used for system login. The employee will be able to log in with their role-based access.
+                </p>
               </div>
             </div>
 

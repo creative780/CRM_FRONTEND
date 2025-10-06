@@ -258,16 +258,19 @@ export default function AdminOrdersTablePage() {
         </h2>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
+        <table className="min-w-full text-sm text-center border-collapse">
           <thead>
-            <tr className="bg-[#7a1b17] text-white">
-              <th className="px-3 py-3 text-center w-20">Sr No</th>
-              <th className="px-3 py-3 text-center w-32">Order Code</th>
-              <th className="px-3 py-3 text-left">Order Details</th>
-              <th className="px-3 py-3 text-center w-36">Client</th>
-              <th className="px-3 py-3 text-center w-28">Date</th>
-              <th className="px-3 py-3 text-center w-32">Status</th>
-              <th className="px-3 py-3 text-center w-32">Urgency</th>
+            <tr className="bg-[#7a1b17] text-white rounded-t-lg w-full">
+              <th className="px-3 py-3 text-center w-20 min-w-[80px] rounded-tl-lg">Sr No</th>
+              <th className="px-3 py-3 text-center w-32 min-w-[140px]">Order Code</th>
+              <th className="px-3 py-3 text-center min-w-[250px]">Order Details</th>
+              <th className="px-3 py-3 text-center w-36 min-w-[120px]">Client</th>
+              <th className="px-3 py-3 text-center w-28 min-w-[100px]">Date</th>
+              <th className="px-3 py-3 text-center w-32 min-w-[120px]">Status</th>
+              <th className="px-3 py-3 text-center w-32 min-w-[120px] rounded-tr-lg relative">
+                <div className="absolute inset-0 bg-[#7a1b17] rounded-tr-lg"></div>
+                <div className="relative z-10">Urgency</div>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -286,8 +289,8 @@ export default function AdminOrdersTablePage() {
                 >
                   <td className="px-3 py-3 text-center">{i + 1}</td>
                   <td className="px-3 py-3 text-center font-medium text-gray-900">{r.orderCode}</td>
-                  <td className="px-3 py-3">
-                    <div className="font-medium text-gray-900">{r.title}</div>
+                  <td className="px-3 py-3 text-center">
+                    <div className="font-medium text-gray-900 max-w-[250px] truncate" title={r.title}>{r.title}</div>
                     {r.assignedSalesPerson && (
                       <div className="text-xs text-gray-500 mt-1">
                         Sales: {r.assignedSalesPerson}
@@ -311,7 +314,7 @@ export default function AdminOrdersTablePage() {
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12 text-black">
       <Toaster position="top-right" />
       <DashboardNavbar />
-      <div className="h-4 sm:h-5 md:h-6" />
+      <br />
 
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-6">

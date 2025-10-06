@@ -374,9 +374,10 @@ export default function InventoryPage() {
   };
 
   return (
-    <div className="bg-gray-100 h-screen p-6 overflow-hidden text-sm">
+    <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
       <Toaster position="top-center" />
-
+      <DashboardNavbar />
+      <br />
       <div className="max-w-[96rem] mx-auto h-full flex flex-col">
         {/* Header */}
         <div className="flex justify-between items-center mb-4">

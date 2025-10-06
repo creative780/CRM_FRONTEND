@@ -263,8 +263,9 @@ export default function SalaryBuilderPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-white to-pink-100 px-6 py-10">
+    <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
       <DashboardNavbar />
+      <br />
       <h1 className="text-4xl font-extrabold text-[#891F1A] mb-6">Salary Builder</h1>
 
       {/* Form (left) + Preview (right) */}

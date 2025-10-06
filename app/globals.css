@@ -284,3 +284,25 @@
 }
 
 .hide-scrollbar::-webkit-scrollbar { display: none; } /* Chrome/Safari */
+
+/* Backdrop Blur Effects */
+.backdrop-blur-light {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.backdrop-blur-medium {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.backdrop-blur-heavy {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.backdrop-blur-overlay {
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  background-color: rgba(0, 0, 0, 0.3);
+}

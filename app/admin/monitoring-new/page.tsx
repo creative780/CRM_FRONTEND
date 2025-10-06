@@ -67,7 +67,7 @@ interface Device {
   };
 }
 
-export default function MonitoringDashboard() {
+function MonitoringDashboard() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -819,7 +819,7 @@ export default function MonitoringDashboard() {
 
         {/* Device Detail Modal */}
         {selectedDevice && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 backdrop-blur-overlay flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -939,7 +939,7 @@ export default function MonitoringDashboard() {
 
         {/* Screenshot Gallery Modal */}
         {showScreenshotModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 backdrop-blur-overlay flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -993,4 +993,4 @@ export default function MonitoringDashboard() {
   );
 }
 
-
+export default MonitoringDashboard;

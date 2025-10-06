@@ -148,6 +148,29 @@ export default function EmployeeMonitoringWithLogin() {
   const [downloading, setDownloading] = useState(false);
 
   // ---------- helpers ----------
+  
+  // Handle escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedEmployee) {
+        setSelectedEmployee(null);
+      }
+    };
+    
+    if (selectedEmployee) {
+      document.addEventListener('keydown', handleEscape);
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [selectedEmployee]);
+  
   function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     (async () => {
@@ -572,8 +595,9 @@ export default function EmployeeMonitoringWithLogin() {
   // Prevent hydration mismatches by not rendering until hydrated
   if (!isHydrated) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <DashboardNavbar />
+      <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
+      <DashboardNavbar />
+      <br />
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#891F1A] mx-auto mb-4"></div>
@@ -586,9 +610,10 @@ export default function EmployeeMonitoringWithLogin() {
 
   if (!authed) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
         <DashboardNavbar />
-        <div className="flex-1 flex items-center justify-center p-6">
+        <br />
+        <div className="flex items-center justify-center p-6">
           <Card className="w-full max-w-md">
             <CardHeader className="text-center">
               <div className="mx-auto w-12 h-12 rounded-full bg-[#891F1A]/10 flex items-center justify-center">
@@ -617,8 +642,9 @@ export default function EmployeeMonitoringWithLogin() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
       <DashboardNavbar />
+      <br />
 
       {/* Header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -826,13 +852,35 @@ export default function EmployeeMonitoringWithLogin() {
 
       {/* Employee Detail Modal */}
       {selectedEmployee && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-[#891F1A]">{selectedEmployee.name} - Detailed View</h2>
-                <Button onClick={() => setSelectedEmployee(null)} className="bg-white text-[#891F1A] border border-[#891F1A] hover:bg-[#891F1A]/10 font-medium">Close</Button>
+        <div 
+          className="fixed inset-0 backdrop-blur-lg flex items-center justify-center p-4 z-50 animate-in fade-in duration-300"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setSelectedEmployee(null);
+            }
+          }}
+        >
+          {/* Subtle overlay effect */}
+          <div className="absolute inset-0 bg-white/5 backdrop-blur-sm"></div>
+          <div 
+            className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto border border-gray-200 animate-in zoom-in-95 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative">
+              {/* Header with gradient */}
+              <div className="bg-gradient-to-r from-[#891F1A] to-[#6c1714] p-6 rounded-t-xl">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-white">{selectedEmployee.name} - Detailed View</h2>
+                  <Button 
+                    onClick={() => setSelectedEmployee(null)} 
+                    className="bg-white/20 text-white border border-white/30 hover:bg-white/30 font-medium backdrop-blur-sm"
+                  >
+                    ✕ Close
+                  </Button>
+                </div>
               </div>
+              
+              <div className="p-6">
 
               <div className="border-b border-gray-200 mb-4">
                 <button className={`px-4 py-2 mr-2 focus:outline-none ${activeModalTab==="timeline"?"border-b-2 border-[#891F1A] text-[#891F1A] font-semibold":"text-gray-500"}`} onClick={() => setActiveModalTab("timeline")}>Activity Timeline</button>
@@ -937,7 +985,7 @@ export default function EmployeeMonitoringWithLogin() {
                   </div>
                 </div>
               )}
-
+              </div>
             </div>
           </div>
         </div>

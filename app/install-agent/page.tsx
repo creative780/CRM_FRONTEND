@@ -150,7 +150,13 @@ export default function InstallAgentPage() {
       // Place the token immediately after --enroll-token
       const apiBase = getApiBaseUrl().replace(/\/+$/, "");
       const token = enrollmentToken ? `"${enrollmentToken}"` : '"<YOUR_TOKEN>"';
-      return `${osInfo.installer} --enroll-token ${token} --server-url ${apiBase} --reset-config`;
+      const command = `${osInfo.installer} --enroll-token ${token} --server-url ${apiBase} --reset-config`;
+      
+      // Break long commands into multiple lines for better readability
+      if (command.length > 80) {
+        return `${osInfo.installer} --enroll-token ${token} \\\n  --server-url ${apiBase} \\\n  --reset-config`;
+      }
+      return command;
     }
     // Fallback for other platforms (no token concatenation by default)
     return osInfo.command;
@@ -215,7 +221,7 @@ export default function InstallAgentPage() {
           <h1 className="text-xl font-bold">CreativePrints</h1>
           <Button 
             variant="outline" 
-            className="text-white border-white hover:bg-white hover:text-[#891F1A]"
+            className="bg-white text-[#891F1A] border-white hover:bg-[#891F1A] hover:text-white"
             onClick={() => window.location.href = '/admin/login'}
           >
             Back to Login
@@ -265,6 +271,7 @@ export default function InstallAgentPage() {
                   size="sm"
                   onClick={() => copyToClipboard(enrollmentToken)}
                   disabled={!enrollmentToken}
+                  title="Copy token to clipboard"
                 >
                   {copied ? <CheckCircle2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </Button>
@@ -329,7 +336,7 @@ export default function InstallAgentPage() {
                 </div>
                 <Button onClick={downloadInstaller} className="bg-[#891F1A] hover:bg-[#6c1714]">
                   <Download className="h-4 w-4 mr-2" />
-                  Download
+                  Download Installer
                 </Button>
               </div>
             </CardContent>
@@ -357,11 +364,14 @@ export default function InstallAgentPage() {
                     size="sm"
                     onClick={() => copyToClipboard(getInstallCommand())}
                     className="text-gray-400 hover:text-white"
+                    title="Copy command to clipboard"
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
-                <code>{getInstallCommand()}</code>
+                <div className="overflow-x-auto">
+                  <code className="whitespace-pre-wrap break-all">{getInstallCommand()}</code>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -418,7 +428,7 @@ export default function InstallAgentPage() {
             <Button
               variant="outline"
               onClick={() => window.location.href = "/admin/login"}
-              className="bg-white border-[#891F1A] text-[#891F1A] hover:bg-[#891F1A]/10"
+              className="bg-white  text-black border-[#891F1A] text-[#891F1A] hover:bg-[#891F1A]/10"
             >
               Back to Login
             </Button>

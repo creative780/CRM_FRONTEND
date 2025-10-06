@@ -712,7 +712,7 @@ export default function DesignerView() {
     return (
       <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12 text-black">
         <DashboardNavbar />
-        <div className="h-4 sm:h-5 md:h-6" />
+        <br />
         <div className="max-w-7xl mx-auto pb-16">
           <div className="flex items-center justify-center h-64">
             <div className="text-lg text-gray-600">Loading orders...</div>
@@ -726,7 +726,7 @@ export default function DesignerView() {
     return (
       <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12 text-black">
         <DashboardNavbar />
-        <div className="h-4 sm:h-5 md:h-6" />
+        <br />
         <div className="max-w-7xl mx-auto pb-16">
           <div className="flex items-center justify-center h-64">
             <div className="text-lg text-red-600">Error: {error}</div>
@@ -738,9 +738,8 @@ export default function DesignerView() {
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12 text-black">
-      {/* Navbar */}
       <DashboardNavbar />
-      <div className="h-4 sm:h-5 md:h-6" />
+      <br />
 
       <div className="max-w-7xl mx-auto pb-16">
         <div className="flex items-center justify-between mt-2">

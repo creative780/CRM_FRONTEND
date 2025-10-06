@@ -21,8 +21,12 @@ type Order = {
   location: string;
   status: string;
   zone?: string;
-finalPrice?: number;
+  finalPrice?: number;
   items?: ApiOrder["items"];
+  assignedSalesPerson?: string;
+  assignedDesigner?: string;
+  assignedProductionPerson?: string;
+  stage?: string;
 };
 const numericFields: Array<keyof Order> = ["id", "price", "advance", "remaining"];
 const summarizeItems = (items?: ApiOrder["items"]) => {
@@ -47,6 +51,7 @@ export default function Page() {
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState("All");
   const [selectedMonth, setSelectedMonth] = useState("All");
+  const [loadingOrderDetails, setLoadingOrderDetails] = useState(false);
 
   const getEffectivePrice = (o: Order) =>
     typeof o.finalPrice === "number" ? o.finalPrice : o.price;
@@ -85,6 +90,11 @@ export default function Page() {
                 : 'Pending',
             items: order.items,
             finalPrice: quotation?.grand_total,
+            // Add assigned personnel information
+            assignedSalesPerson: order.assigned_sales_person || quotation?.sales_person || 'Not assigned',
+            assignedDesigner: order.assigned_designer || 'Not assigned',
+            assignedProductionPerson: order.assigned_production_person || 'Not assigned',
+            stage: order.stage || order.status,
           };
         });
 
@@ -118,9 +128,51 @@ export default function Page() {
     } catch {}
   }, []);
 
-  const handleEditClick = (order: Order) => {
+  const handleEditClick = async (order: Order) => {
     setSelectedOrder(order);
     setShowModal(true);
+    setLoadingOrderDetails(true);
+    
+    // Fetch complete order data from backend
+    try {
+      const fullOrderData = await ordersApi.getOrder(order.id);
+      console.log('=== FULL ORDER DATA FROM BACKEND ===');
+      console.log('Order ID:', order.id);
+      console.log('Full order data:', fullOrderData);
+      console.log('Assigned sales person:', fullOrderData.assigned_sales_person);
+      console.log('Assigned designer:', fullOrderData.assigned_designer);
+      console.log('Assigned production person:', fullOrderData.assigned_production_person);
+      console.log('Stage:', fullOrderData.stage);
+      console.log('Status:', fullOrderData.status);
+      console.log('Items:', fullOrderData.items);
+      console.log('Quotation:', fullOrderData.quotation);
+      
+      // Update the selected order with complete backend data
+      setSelectedOrder({
+        ...order,
+        // Update with real backend data
+        assignedSalesPerson: fullOrderData.assigned_sales_person || 'Not assigned',
+        assignedDesigner: fullOrderData.assigned_designer || 'Not assigned',
+        assignedProductionPerson: fullOrderData.assigned_production_person || 'Not assigned',
+        stage: fullOrderData.stage || fullOrderData.status,
+        items: fullOrderData.items || [],
+        // Update other fields with real data
+        company: fullOrderData.company_name || fullOrderData.client_name,
+        name: fullOrderData.client_name,
+        phone: fullOrderData.phone || order.phone,
+        detail: fullOrderData.specs || order.detail,
+        status: fullOrderData.status,
+        // Update pricing from quotation if available
+        price: fullOrderData.quotation?.grand_total || order.price,
+        advance: fullOrderData.quotation?.advance_paid || order.advance,
+        remaining: fullOrderData.quotation?.remaining || order.remaining,
+      });
+    } catch (error) {
+      console.error('Failed to fetch full order data:', error);
+      toast.error('Failed to load complete order details');
+    } finally {
+      setLoadingOrderDetails(false);
+    }
   };
 
   const closeModal = () => {
@@ -249,8 +301,9 @@ export default function Page() {
   }, [orders, search, selectedStatus, selectedMonth, sortField, sortDirection]);
 
   return (
-    <div className="bg-gray-100 h-screen p-6 overflow-hidden text-sm">
+    <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
       <DashboardNavbar />
+      <br />
       <div className="max-w-[96rem] mx-auto h-full flex flex-col">
         <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
           <h2 className="text-3xl font-bold text-[#891F1A]">Orders</h2>
@@ -330,20 +383,20 @@ export default function Page() {
           )}
 
           {!loading && !error && (
-            <div className="w-full h-full overflow-y-auto overflow-x-auto pr-2 scrollbar-custom">
-              <table className="w-full table-auto text-xs text-center divide-y divide-gray-100">
+            <div className="w-full h-full overflow-y-auto overflow-x-auto scrollbar-custom">
+              <table className="w-full table-auto text-xs divide-y divide-gray-100 text-center border-collapse">
               <thead className="font-semibold sticky top-0 z-10">
-                <tr>
+                <tr className="bg-[#891F1A] rounded-t-lg w-full">
                   <th
-                    className="px-1 py-2 bg-[#891F1A] text-white sticky top-0 z-20 rounded-tl-md cursor-pointer"
+                    className="px-3 py-3 text-white sticky top-0 z-20 rounded-tl-lg cursor-pointer min-w-[80px]"
                     onClick={() => handleSort("id")}
                   >
-                    <div className="flex items-center justify-center gap-1">
+                    <div className="flex items-center justify-center gap-1 text-center">
                       ID {renderSortArrow("id")}
                     </div>
                   </th>
                   <th
-                    className="px-2 py-2 bg-[#891F1A] text-white sticky top-0 z-20 cursor-pointer"
+                    className="px-3 py-3 text-white sticky top-0 z-20 cursor-pointer text-center min-w-[120px]"
                     onClick={() => handleSort("company")}
                   >
                     <div className="flex items-center justify-center gap-1">
@@ -351,7 +404,7 @@ export default function Page() {
                     </div>
                   </th>
                   <th
-                    className="px-2 py-2 bg-[#891F1A] text-white sticky top-0 z-20 cursor-pointer"
+                    className="px-3 py-3 text-white sticky top-0 z-20 cursor-pointer text-center min-w-[120px]"
                     onClick={() => handleSort("name")}
                   >
                     <div className="flex items-center justify-center gap-1">
@@ -359,7 +412,7 @@ export default function Page() {
                     </div>
                   </th>
                   <th
-                    className="px-2 py-2 bg-[#891F1A] text-white sticky top-0 z-20 cursor-pointer"
+                    className="px-3 py-3 text-white sticky top-0 z-20 cursor-pointer text-center min-w-[120px]"
                     onClick={() => handleSort("phone")}
                   >
                     <div className="flex items-center justify-center gap-1">
@@ -367,15 +420,15 @@ export default function Page() {
                     </div>
                   </th>
                   <th
-                    className="px-2 py-2 bg-[#891F1A] text-white sticky top-0 z-20 cursor-pointer"
+                    className="px-3 py-3 text-white sticky top-0 z-20 cursor-pointer text-center min-w-[200px]"
                     onClick={() => handleSort("detail")}
                   >
                     <div className="flex items-center justify-center gap-1">
-                      Order {renderSortArrow("detail")}
+                      Order Details {renderSortArrow("detail")}
                     </div>
                   </th>
                   <th
-                    className="px-2 py-2 bg-[#891F1A] text-white sticky top-0 z-20 cursor-pointer"
+                    className="px-3 py-3 text-white sticky top-0 z-20 cursor-pointer text-center min-w-[100px]"
                     onClick={() => handleSort("date")}
                   >
                     <div className="flex items-center justify-center gap-1">
@@ -384,7 +437,7 @@ export default function Page() {
                   </th>
                   {/* PRICE column (shows finalPrice if present, else price) */}
                   <th
-                    className="px-2 py-2 bg-[#891F1A] text-white sticky top-0 z-20 cursor-pointer"
+                    className="px-3 py-3 text-white sticky top-0 z-20 cursor-pointer text-center min-w-[100px]"
                     onClick={() => handleSort("price")}
                   >
                     <div className="flex items-center justify-center gap-1">
@@ -392,7 +445,7 @@ export default function Page() {
                     </div>
                   </th>
                   <th
-                    className="px-2 py-2 bg-[#891F1A] text-white sticky top-0 z-20 cursor-pointer"
+                    className="px-3 py-3 text-white sticky top-0 z-20 cursor-pointer text-center min-w-[100px]"
                     onClick={() => handleSort("advance")}
                   >
                     <div className="flex items-center justify-center gap-1">
@@ -400,7 +453,7 @@ export default function Page() {
                     </div>
                   </th>
                   <th
-                    className="px-2 py-2 bg-[#891F1A] text-white sticky top-0 z-20 cursor-pointer"
+                    className="px-3 py-3 text-white sticky top-0 z-20 cursor-pointer text-center min-w-[100px]"
                     onClick={() => handleSort("remaining")}
                   >
                     <div className="flex items-center justify-center gap-1">
@@ -408,39 +461,44 @@ export default function Page() {
                     </div>
                   </th>
                   <th
-                    className="px-2 py-2 bg-[#891F1A] text-white sticky top-0 z-20 cursor-pointer"
+                    className="px-3 py-3 text-white sticky top-0 z-20 cursor-pointer text-center min-w-[100px]"
                     onClick={() => handleSort("location")}
                   >
                     <div className="flex items-center justify-center gap-1">
                       Location {renderSortArrow("location")}
                     </div>
                   </th>
-                  <th className="px-2 py-2 bg-[#891F1A] text-white sticky top-0 z-20">
+                  <th className="px-3 py-3 text-white sticky top-0 z-20 text-center min-w-[100px]">
                     Status
                   </th>
-                  <th className="px-2 py-2 bg-[#891F1A] text-white sticky top-0 z-20 rounded-tr-md">
-                    Actions
+                  <th className="px-3 py-3 text-white sticky top-0 z-20 rounded-tr-lg text-center min-w-[120px] relative">
+                    <div className="absolute inset-0 bg-[#891F1A] rounded-tr-lg"></div>
+                    <div className="relative z-10">Actions</div>
                   </th>
                 </tr>
               </thead>
 
               <tbody>
                 {filteredOrders.map((order) => (
-                  <tr key={order.id} className="text-gray-800">
-                    <td className="px-1 py-2 font-semibold">{order.id}</td>
-                    <td className="px-2 py-2">{order.company}</td>
-                    <td className="px-2 py-2">{order.name}</td>
-                    <td className="px-2 py-2">{order.phone}</td>
-                    <td className="px-2 py-2">{order.detail}</td>
-                    <td className="px-2 py-2">{order.date}</td>
+                  <tr 
+                    key={order.id} 
+                    className="text-gray-800 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-100"
+                    onClick={() => handleEditClick(order)}
+                  >
+                    <td className="px-3 py-3 text-center font-semibold">{order.id}</td>
+                    <td className="px-3 py-3 text-center">{order.company}</td>
+                    <td className="px-3 py-3 text-center">{order.name}</td>
+                    <td className="px-3 py-3 text-center">{order.phone}</td>
+                    <td className="px-3 py-3 text-center max-w-[200px] truncate" title={order.detail}>{order.detail}</td>
+                    <td className="px-3 py-3 text-center">{order.date}</td>
                     {/* Effective price display */}
-                    <td className="px-2 py-2 font-semibold">
+                    <td className="px-3 py-3 text-center font-semibold">
                       ${getEffectivePrice(order)}
                     </td>
-                    <td className="px-2 py-2 font-semibold">${order.advance}</td>
-                    <td className="px-2 py-2 font-semibold">${order.remaining}</td>
-                    <td className="px-2 py-2">{order.location}</td>
-                    <td className="px-2 py-2">
+                    <td className="px-3 py-3 text-center font-semibold">${order.advance}</td>
+                    <td className="px-3 py-3 text-center font-semibold">${order.remaining}</td>
+                    <td className="px-3 py-3 text-center">{order.location}</td>
+                    <td className="px-3 py-3 text-center">
                       <span
                         className={cn(
                           "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium",
@@ -454,18 +512,24 @@ export default function Page() {
                         {order.status}
                       </span>
                     </td>
-                    <td className="px-2 py-2 text-center">
+                    <td className="px-3 py-3 text-center">
                       <div className="flex justify-center items-center gap-2">
                         <button
-                          onClick={() => handleEditClick(order)}
-                          className="text-gray-400 hover:text-blue-600"
-                          title="Edit order"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditClick(order);
+                          }}
+                          className="text-gray-400 hover:text-blue-600 transition-colors"
+                          title="View/Edit order details"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDeleteOrder(order.id)}
-                          className="text-gray-400 hover:text-red-600"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteOrder(order.id);
+                          }}
+                          className="text-gray-400 hover:text-red-600 transition-colors"
                           title="Delete order"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -483,18 +547,205 @@ export default function Page() {
 
       {showModal && selectedOrder && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-xl rounded-lg shadow-lg p-6 relative">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-black">Edit Order</h2>
+          <div className="bg-white w-full max-w-4xl rounded-lg shadow-lg p-6 relative max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-[#891F1A]">Order Details</h2>
+                <p className="text-sm text-gray-600 mt-1">Order #{selectedOrder.id} - {selectedOrder.company}</p>
+              </div>
               <button
                 onClick={closeModal}
-                className="text-gray-400 hover:text-black text-xl"
+                className="text-gray-400 hover:text-black text-2xl font-bold"
               >
-                Ã—
+                ×
               </button>
             </div>
-            <hr className="border-gray-400 mb-4" />
-            <form className="space-y-4 text-black" onSubmit={(e) => e.preventDefault()}>
+            
+            {/* Order Overview Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="text-xs font-medium text-blue-700 mb-1">Total Price</div>
+                <div className="text-lg font-bold text-gray-900">${getEffectivePrice(selectedOrder)}</div>
+              </div>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="text-xs font-medium text-green-700 mb-1">Advance Paid</div>
+                <div className="text-lg font-bold text-gray-900">${selectedOrder.advance}</div>
+              </div>
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <div className="text-xs font-medium text-orange-700 mb-1">Remaining</div>
+                <div className="text-lg font-bold text-gray-900">${selectedOrder.remaining}</div>
+              </div>
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <div className="text-xs font-medium text-purple-700 mb-1">Status</div>
+                <div className="text-sm font-bold text-gray-900">
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium",
+                      selectedOrder.status === "Completed"
+                        ? "bg-green-100 text-green-800"
+                        : selectedOrder.status === "In Progress"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-red-100 text-red-800"
+                    )}
+                  >
+                    {selectedOrder.status}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <hr className="border-gray-200 mb-6" />
+            
+            {/* Loading State */}
+            {loadingOrderDetails && (
+              <div className="flex items-center justify-center py-8 mb-6">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#891F1A]"></div>
+                <span className="ml-3 text-gray-600">Loading complete order details...</span>
+              </div>
+            )}
+            
+            {/* Order Information Section */}
+            {!loadingOrderDetails && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-blue-900 mb-4 flex items-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      Customer Information
+                    </h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-medium text-blue-700">Company Name</label>
+                        <p className="text-sm text-gray-900 font-medium">{selectedOrder.company}</p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-blue-700">Customer Name</label>
+                        <p className="text-sm text-gray-900 font-medium">{selectedOrder.name}</p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-blue-700">Phone Number</label>
+                        <p className="text-sm text-gray-900 font-medium">{selectedOrder.phone}</p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-blue-700">Location</label>
+                        <p className="text-sm text-gray-900 font-medium">{selectedOrder.location}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-green-900 mb-4 flex items-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Order Information
+                    </h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-medium text-green-700">Order Date</label>
+                        <p className="text-sm text-gray-900 font-medium">{selectedOrder.date}</p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-green-700">Order Details</label>
+                        <p className="text-sm text-gray-900 font-medium">{selectedOrder.detail}</p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-green-700">Order ID</label>
+                        <p className="text-sm text-gray-900 font-medium">#{selectedOrder.id}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-purple-900 mb-4 flex items-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                      Assigned Personnel
+                    </h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-medium text-purple-700">Sales Person</label>
+                        <p className="text-sm text-gray-900 font-medium">
+                          {selectedOrder.assignedSalesPerson || 'Not assigned'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-purple-700">Designer</label>
+                        <p className="text-sm text-gray-900 font-medium">
+                          {selectedOrder.assignedDesigner || 'Not assigned'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-purple-700">Production</label>
+                        <p className="text-sm text-gray-900 font-medium">
+                          {selectedOrder.assignedProductionPerson || 'Not assigned'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-purple-700">Current Stage</label>
+                        <p className="text-sm text-gray-900 font-medium">
+                          <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800">
+                            {selectedOrder.stage || selectedOrder.status}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Order Items Section */}
+                {selectedOrder.items && selectedOrder.items.length > 0 && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                      </svg>
+                      Order Items
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {selectedOrder.items.map((item: any, index: number) => (
+                        <div key={index} className="bg-white border border-gray-300 rounded-lg p-3">
+                          <div className="flex items-start gap-3">
+                            <div className="w-12 h-12 bg-gray-100 rounded-md flex items-center justify-center flex-shrink-0">
+                              {item.image_url ? (
+                                <img src={item.image_url} alt={item.name} className="w-full h-full object-cover rounded-md" />
+                              ) : (
+                                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-medium text-gray-900 truncate">{item.name}</h4>
+                              <p className="text-xs text-gray-600">Quantity: {item.quantity || 1}</p>
+                              {item.sku && <p className="text-xs text-gray-500">SKU: {item.sku}</p>}
+                              {item.attributes && Object.keys(item.attributes).length > 0 && (
+                                <div className="mt-1">
+                                  {Object.entries(item.attributes).map(([key, value]) => (
+                                    <span key={key} className="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded mr-1 mb-1">
+                                      {key}: {value}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Edit Section */}
+            {!loadingOrderDetails && (
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Edit Order Details</h3>
+              <form className="space-y-4 text-black" onSubmit={(e) => e.preventDefault()}>
               {/* Price, Final Price & Advance */}
               <div className="flex gap-4">
                 <div className="flex flex-col flex-1">
@@ -667,7 +918,26 @@ export default function Page() {
                   Save
                 </button>
               </div>
-            </form>
+              </form>
+            </div>
+            )}
+            
+            {/* Modal Footer */}
+            <div className="border-t border-gray-200 pt-4 mt-6 flex justify-between items-center">
+              <button
+                onClick={closeModal}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handleUpdateOrder}
+                className="bg-[#891F1A] text-white px-6 py-2 rounded hover:bg-red-800 transition-colors"
+              >
+                Save Changes
+              </button>
+            </div>
           </div>
         </div>
       )}

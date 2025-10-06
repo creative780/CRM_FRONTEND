@@ -198,8 +198,9 @@ export default function ClientManagement() {
 
   if (loading) {
     return (
-      <div className="space-y-6 px-4 md:px-8 lg:px-12 py-6">
+      <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
         <DashboardNavbar />
+        <br />
         <div className="text-center py-12">
           <div className="text-gray-600">Loading clients...</div>
         </div>
@@ -209,8 +210,9 @@ export default function ClientManagement() {
 
   if (error) {
     return (
-      <div className="space-y-6 px-4 md:px-8 lg:px-12 py-6">
+      <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
         <DashboardNavbar />
+        <br />
         <div className="text-center py-12">
           <div className="text-red-600">Error: {error}</div>
         </div>
@@ -219,8 +221,9 @@ export default function ClientManagement() {
   }
 
   return (
-    <div className="space-y-6 px-4 md:px-8 lg:px-12 py-6">
+    <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
       <DashboardNavbar />
+      <br />
       
       {/* Header */}
       <div className="flex items-center justify-between">

@@ -325,7 +325,7 @@ export default function DesignerOrdersTablePage() {
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12 text-black">
       <Toaster position="top-right" />
       <DashboardNavbar />
-      <div className="h-4 sm:h-5 md:h-6" />
+      <br />
 
       <div className="max-w-7xl mx-auto">
         <h1 className="text-4xl font-bold text-[#891F1A] mb-6">Designer Dashboard</h1>
