@@ -726,7 +726,7 @@ export default function Page() {
                                 <div className="mt-1">
                                   {Object.entries(item.attributes).map(([key, value]) => (
                                     <span key={key} className="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded mr-1 mb-1">
-                                      {key}: {value}
+                                      {key}: {String(value)}
                                     </span>
                                   ))}
                                 </div>

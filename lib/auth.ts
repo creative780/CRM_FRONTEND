@@ -51,7 +51,7 @@ async function fetchDeviceIdFromAgent(): Promise<string | null> {
       }
     } catch (error) {
       // Continue to next URL
-      console.debug('❌ Agent not reachable at', url, error.message);
+      console.debug('❌ Agent not reachable at', url, error instanceof Error ? error.message : String(error));
     }
   }
   

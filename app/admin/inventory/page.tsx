@@ -5,6 +5,7 @@ import { Pencil, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import toast, { Toaster } from 'react-hot-toast';
+import DashboardNavbar from '@/app/components/navbar/DashboardNavbar';
 
 const mockInventory = [
   {
