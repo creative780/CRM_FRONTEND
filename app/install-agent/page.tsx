@@ -32,7 +32,7 @@ const OS_DETECTION: Record<string, OSInfo> = {
     name: "Windows",
     platform: "windows",
     installer: "crm-monitoring-agent.exe",
-    command: "crm-monitoring-agent.exe --enroll-token",
+    command: "crm-monitoring-agent.exe --enroll-token --server-url https://api.crm.click2print.store:9000 --reset-config",
   },
   mac: {
     name: "macOS",
@@ -335,8 +335,13 @@ export default function InstallAgentPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-gray-600">
-                For advanced users, you can install the agent using the command line:
+                For advanced users, you can install the agent using the command line. The command includes:
               </p>
+              <ul className="text-sm text-gray-600 list-disc list-inside space-y-1 ml-4">
+                <li><code className="bg-gray-100 px-1 rounded">--enroll-token</code>: Your device enrollment token</li>
+                <li><code className="bg-gray-100 px-1 rounded">--server-url</code>: Backend server URL (automatically set)</li>
+                <li><code className="bg-gray-100 px-1 rounded">--reset-config</code>: Clears any cached configuration</li>
+              </ul>
               <div className="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-gray-400">Terminal</span>
@@ -385,6 +390,15 @@ export default function InstallAgentPage() {
                     <h4 className="font-semibold">Still Can't Login</h4>
                     <p className="text-sm text-gray-600">
                       Contact your system administrator for assistance with device enrollment.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-blue-500 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold">Connection Issues</h4>
+                    <p className="text-sm text-gray-600">
+                      If the agent can't connect to the server, try running with <code className="bg-gray-100 px-1 rounded">--reset-config</code> to clear cached settings.
                     </p>
                   </div>
                 </div>
