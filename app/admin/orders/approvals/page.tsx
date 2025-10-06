@@ -176,11 +176,14 @@ function ApprovalDecisionModal({ approval, isOpen, onClose, onDecision, processi
               {approval.design_files_manifest.map((file: any, index: number) => (
                 <div key={index} className="flex items-center gap-3 p-3 bg-white rounded-md border border-purple-200 hover:shadow-md transition-shadow">
                   <div className="flex-shrink-0 text-lg">
-                    {file.type?.startsWith('image/') ? '🖼️' : 
-                     file.name?.toLowerCase().endsWith('.pdf') ? '📄' : 
-                     file.name?.toLowerCase().endsWith('.doc') || file.name?.toLowerCase().endsWith('.docx') ? '📝' : 
-                     file.name?.toLowerCase().endsWith('.ai') ? '🎨' :
-                     file.name?.toLowerCase().endsWith('.psd') ? '🖌️' : '📁'}
+                    {(() => {
+                      if (file.type?.startsWith('image/')) return '[IMG]';
+                      if (file.name?.toLowerCase().endsWith('.pdf')) return '[PDF]';
+                      if (file.name?.toLowerCase().endsWith('.doc') || file.name?.toLowerCase().endsWith('.docx')) return '[DOC]';
+                      if (file.name?.toLowerCase().endsWith('.ai')) return '[AI]';
+                      if (file.name?.toLowerCase().endsWith('.psd')) return '[PSD]';
+                      return '[FILE]';
+                    })()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-purple-900 truncate">
@@ -288,19 +291,19 @@ function ApprovalCard({ approval, onApprove, onReject, processing }: {
     if (hoursSinceSubmission > 48) {
       return (
         <span className="px-3 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded-full border border-red-200">
-          ⚠️ Overdue
+          [OVERDUE]
         </span>
       );
     } else if (hoursSinceSubmission > 24) {
       return (
         <span className="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full border border-yellow-200">
-          🔥 Urgent
+          [URGENT]
         </span>
       );
     } else {
       return (
         <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full border border-green-200">
-          ✅ Normal
+          [NORMAL]
         </span>
       );
     }
@@ -313,7 +316,7 @@ function ApprovalCard({ approval, onApprove, onReject, processing }: {
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <h3 className="text-lg font-semibold text-gray-900">
-              { approval.order_code}
+              {approval.order_code}
             </h3>
             {getPriorityBadge()}
           </div>
@@ -408,7 +411,7 @@ export default function SalesApprovalPage() {
     // Listen for new approval requests from designers
     const onApprovalRequest = (event: any) => {
       const { orderCode, designer, clientName } = event.detail;
-      toast.success(`🎯 ${designer} requested approval for order ${orderCode} (${clientName})`, {
+      toast.success(`[APPROVAL] ${designer} requested approval for order ${orderCode} (${clientName})`, {
         duration: 5000,
       });
       
@@ -437,7 +440,7 @@ export default function SalesApprovalPage() {
       await approveDesign(selectedApproval.id, backendAction, reason);
       
       const actionText = action === 'approve' ? 'approved' : 'rejected';
-      const actionEmoji = action === 'approve' ? '🎉' : '❌';
+      const actionEmoji = action === 'approve' ? '[APPROVED]' : '[REJECTED]';
       
       toast.success(`${actionEmoji} Design ${actionText} for ${selectedApproval.order_code}!`);
       
@@ -538,7 +541,7 @@ export default function SalesApprovalPage() {
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="privileges-green-100 text-sm">Normal</p>
+                  <p className="text-green-100 text-sm">Normal</p>
                   <p className="text-3xl font-bold">{stats.normal}</p>
                 </div>
               </div>
@@ -550,7 +553,7 @@ export default function SalesApprovalPage() {
                   <AlertTriangle className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="privileges-yellow-100 text-sm">Urgent</p>
+                  <p className="text-yellow-100 text-sm">Urgent</p>
                   <p className="text-3xl font-bold">{stats.urgent}</p>
                 </div>
               </div>
@@ -562,7 +565,7 @@ export default function SalesApprovalPage() {
                   <AlertCircle className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="privileges-red-100 text-sm">Overdue</p>
+                  <p className="text-red-100 text-sm">Overdue</p>
                   <p className="text-3xl font-bold">{stats.overdue}</p>
                 </div>
               </div>
