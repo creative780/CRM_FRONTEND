@@ -152,10 +152,10 @@ export default function InstallAgentPage() {
       const token = enrollmentToken ? `"${enrollmentToken}"` : '"<YOUR_TOKEN>"';
       const command = `${osInfo.installer} --enroll-token ${token} --server-url ${apiBase} --reset-config`;
       
-      // Break long commands into multiple lines for better readability
-      if (command.length > 80) {
-        return `${osInfo.installer} --enroll-token ${token} \\\n  --server-url ${apiBase} \\\n  --reset-config`;
-      }
+      // Debug: log the command to see what's being generated
+      console.log('Generated command:', command);
+      
+      // Always return as a single line command
       return command;
     }
     // Fallback for other platforms (no token concatenation by default)
@@ -369,8 +369,8 @@ export default function InstallAgentPage() {
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
-                <div className="overflow-x-auto">
-                  <code className="whitespace-pre-wrap break-all">{getInstallCommand()}</code>
+                <div className="overflow-x-auto hide-scrollbar">
+                  <pre className="whitespace-nowrap text-sm font-mono">{getInstallCommand()}</pre>
                 </div>
               </div>
             </CardContent>
