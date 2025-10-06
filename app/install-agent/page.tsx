@@ -32,7 +32,7 @@ const OS_DETECTION: Record<string, OSInfo> = {
     name: "Windows",
     platform: "windows",
     installer: "crm-monitoring-agent.exe",
-    command: "crm-monitoring-agent.exe --enroll-token --server-url https://api.crm.click2print.store:9000 --reset-config",
+    command: "crm-monitoring-agent.exe",
   },
   mac: {
     name: "macOS",
@@ -145,8 +145,15 @@ export default function InstallAgentPage() {
   };
 
   const getInstallCommand = () => {
-    if (!osInfo || !enrollmentToken) return "";
-    return `${osInfo.command} "${enrollmentToken}"`;
+    if (!osInfo) return "";
+    if (osInfo.platform === "windows") {
+      // Place the token immediately after --enroll-token
+      const apiBase = getApiBaseUrl().replace(/\/+$/, "");
+      const token = enrollmentToken ? `"${enrollmentToken}"` : '"<YOUR_TOKEN>"';
+      return `${osInfo.installer} --enroll-token ${token} --server-url ${apiBase} --reset-config`;
+    }
+    // Fallback for other platforms (no token concatenation by default)
+    return osInfo.command;
   };
 
   const getInstallSteps = () => {
