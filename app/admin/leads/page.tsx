@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import PageHeader from "@/components/PageHeader";
 import {
   DragDropContext,
   Droppable,
@@ -601,18 +602,15 @@ export default function LeadFunnel() {
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
       <DashboardNavbar />
       <br />
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Lead Management</h1>
-          <p className="text-gray-600">
-            Track and convert leads through your sales pipeline
-          </p>
-        </div>
-      </div>
+        {/* Header */}
+        <PageHeader 
+          title="Lead Management"
+          description="Track and convert leads through your sales pipeline"
+        >
+        </PageHeader>
 
       {/* Analytics Dashboard */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
@@ -671,7 +669,7 @@ export default function LeadFunnel() {
       </div>
 
       {/* Stage Performance Overview */}
-      <Card>
+      <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center">
             <TrendingUp className="h-5 w-5 mr-2" />
@@ -679,9 +677,9 @@ export default function LeadFunnel() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 relative">
             {stages.map((stage, index) => (
-              <div key={stage.id} className="text-center">
+              <div key={stage.id} className="text-center relative">
                 <div className="flex items-center justify-center mb-2">
                   <div
                     className={`w-12 h-12 rounded-full flex items-center justify-center ${stage.color} border-2`}
@@ -690,9 +688,6 @@ export default function LeadFunnel() {
                       {stage.leads.length}
                     </span>
                   </div>
-                  {index < stages.length - 1 && (
-                    <ArrowRight className="h-4 w-4 text-gray-400 ml-2" />
-                  )}
                 </div>
                 <h3 className="font-medium text-sm">{stage.title}</h3>
                 <div className="text-xs text-gray-500 mt-1">
@@ -703,6 +698,12 @@ export default function LeadFunnel() {
                   value={(stage.leads.length / stage.targetCount) * 100}
                   className="h-2 mt-2"
                 />
+                {/* Arrow positioned between stages */}
+                {index < stages.length - 1 && (
+                  <div className="absolute top-1/2 -right-2 transform -translate-y-1/2 hidden md:block">
+                    <ArrowRight className="h-4 w-4 text-gray-400" />
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -710,7 +711,7 @@ export default function LeadFunnel() {
       </Card>
 
       {/* Filters */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 py-2">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 py-2 mb-6">
         {/* Search Input on the Left */}
         <div className="relative w-full md:w-96">
           <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -766,7 +767,7 @@ export default function LeadFunnel() {
 
       {/* Kanban Board with Carousel */}
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           {filteredStages.map((stage) => {
             const activeIndex = stageIndices[stage.id] || 0;
             const activeLead = stage.leads[activeIndex];

@@ -65,90 +65,6 @@
   animation: fadeInUp 0.4s ease-out forwards;
 }
 
-/* Scrollbar — Windows 11 Thin Style */
-.scrollbar-thin-w11 {
-  scrollbar-width: thin; /* Firefox */
-  scrollbar-color: #a0aec0 #edf2f7;
-}
-
-.scrollbar-thin-w11::-webkit-scrollbar {
-  width: 6px;
-  transition: width 0.3s ease-in-out;
-}
-
-.scrollbar-thin-w11:hover::-webkit-scrollbar {
-  width: 12px;
-}
-
-.scrollbar-thin-w11::-webkit-scrollbar-track {
-  background: #edf2f7;
-  border-radius: 10px;
-}
-
-.scrollbar-thin-w11::-webkit-scrollbar-thumb {
-  background-color: #a0aec0;
-  border-radius: 10px;
-  border: 3px solid transparent;
-  background-clip: content-box;
-}
-
-.scrollbar-thin-w11:hover::-webkit-scrollbar-thumb {
-  background-color: #4a5568;
-}
-
-/* Dark Mode - Thin Scrollbar Styling */
-@media (prefers-color-scheme: dark) {
-  .scrollbar-thin-w11::-webkit-scrollbar-track {
-    background: #1f2937;
-  }
-
-  .scrollbar-thin-w11::-webkit-scrollbar-thumb {
-    background-color: #4b5563;
-  }
-
-  .scrollbar-thin-w11:hover::-webkit-scrollbar-thumb {
-    background-color: #9ca3af;
-  }
-}
-
-/* Custom Scrollbar — Clean Version */
-.scrollbar-custom {
-  scrollbar-width: thin;
-  scrollbar-color: #555555 #ffffff; /* dark thumb, white track */
-}
-
-.scrollbar-custom::-webkit-scrollbar {
-  width: 8px;
-}
-
-.scrollbar-custom::-webkit-scrollbar-track {
-  background-color: #ffffff; /* white background */
-  border-radius: 9999px;
-}
-
-.scrollbar-custom::-webkit-scrollbar-thumb {
-  background-color: #555555; /* dark grey thumb */
-  border-radius: 9999px;
-}
-
-.scrollbar-custom::-webkit-scrollbar-thumb:hover {
-  background-color: #777777;
-}
-
-/* Dark Mode - Custom Scrollbar Styling */
-@media (prefers-color-scheme: dark) {
-  .scrollbar-custom::-webkit-scrollbar-track {
-    background: #1f1f1f;
-  }
-
-  .scrollbar-custom::-webkit-scrollbar-thumb {
-    background: #555555;
-  }
-
-  .scrollbar-custom::-webkit-scrollbar-thumb:hover {
-    background: #777777;
-  }
-}
 
 @keyframes fadeInUp {
   from {
@@ -244,46 +160,6 @@
 }
 
 
-/* Ultra slim scrollbar with gap-friendly track */
-.scrollbar-compact {
-  scrollbar-width: thin; /* Firefox */
-  scrollbar-gutter: stable both-edges;
-}
-
-/* WebKit browsers (Chrome, Edge, Safari) */
-.scrollbar-compact::-webkit-scrollbar {
-  width: 1px; /* super slim default */
-  height: 1px;
-  transition: width 0.2s ease;
-}
-
-.scrollbar-compact:hover::-webkit-scrollbar {
-  width: 3px; /* expand on hover for better usability */
-}
-
-.scrollbar-compact::-webkit-scrollbar-track {
-  background: transparent; /* no visible "white" bar */
-}
-
-.scrollbar-compact::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.45);
-  border-radius: 9999px;
-}
-
-/* Dark mode tweak */
-@media (prefers-color-scheme: dark) {
-  .scrollbar-compact::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.35);
-  }
-}
-
-/* Hide native scrollbar but keep scrollability */
-.hide-scrollbar {
-  -ms-overflow-style: none; /* IE/Edge */
-  scrollbar-width: none;    /* Firefox */
-}
-
-.hide-scrollbar::-webkit-scrollbar { display: none; } /* Chrome/Safari */
 
 /* Backdrop Blur Effects */
 .backdrop-blur-light {
@@ -306,3 +182,97 @@
   -webkit-backdrop-filter: blur(6px);
   background-color: rgba(0, 0, 0, 0.3);
 }
+
+/* ------------------------------
+   Professional Cursor Kit
+   - Sensible defaults across the site
+   - Utility classes for specific states
+   - Attribute helpers for semantic usage
+   Usage examples:
+     <div class="cursor-move"></div>
+     <img class="cursor-zoom-in" ... />
+     <div data-resize="ew"></div>
+     <div draggable="true" class="cursor-grab"></div>
+   To opt-out anywhere, add class `use-system-cursor` on a container.
+-------------------------------- */
+
+/* 1) Global sensible defaults */
+/* Respect system cursor unless overridden */
+.use-system-cursor, .use-system-cursor * { cursor: auto; }
+
+/* Interactives → pointer */
+a, button, [role="button"], summary,
+input[type="checkbox"], input[type="radio"],
+input[type="submit"], input[type="button"],
+select, option,
+.btn, .Button, .shadcn-button { cursor: pointer; }
+
+/* Text inputs → text */
+input[type="text"], input[type="email"], input[type="password"],
+input[type="search"], input[type="tel"], input[type="url"],
+textarea, [contenteditable="true"] { cursor: text; }
+
+/* Draggable → grab/grabbing (JS can toggle body.dragging during drag) */
+[draggable="true"], .cursor-grab { cursor: grab; }
+body.dragging [draggable="true"], body.dragging .cursor-grab, .cursor-grabbing { cursor: grabbing; }
+
+/* 2) Zoom utilities */
+.cursor-zoom-in, [data-zoom="in"], img.zoom-in { cursor: zoom-in; }
+.cursor-zoom-out, [data-zoom="out"], img.zoom-out { cursor: zoom-out; }
+
+/* 3) Move/Resize utilities (vector pack equivalents) */
+.cursor-move, [data-cursor="move"], [data-resize="move"], .cursor-all-scroll { cursor: move; }
+.cursor-ew, [data-resize="ew"], .cursor-col { cursor: ew-resize; }
+.cursor-ns, [data-resize="ns"], .cursor-row { cursor: ns-resize; }
+.cursor-nesw, [data-resize="nesw"] { cursor: nesw-resize; }
+.cursor-nwse, [data-resize="nwse"] { cursor: nwse-resize; }
+.cursor-n, [data-resize="n"] { cursor: n-resize; }
+.cursor-s, [data-resize="s"] { cursor: s-resize; }
+.cursor-e, [data-resize="e"] { cursor: e-resize; }
+.cursor-w, [data-resize="w"] { cursor: w-resize; }
+.cursor-all, [data-cursor="all"], .cursor-pan { cursor: all-scroll; }
+
+/* 4) Caret / text selection variations */
+.cursor-text, [data-cursor="text"] { cursor: text; }
+.cursor-crosshair, [data-cursor="crosshair"] { cursor: crosshair; }
+
+/* 5) Disabled/Not-allowed */
+.cursor-not-allowed, [aria-disabled="true"], [disabled] { cursor: not-allowed; }
+
+/* 6) Helper for splitters/handles by role */
+[role="separator"][aria-orientation="vertical"], .splitter-vertical { cursor: col-resize; }
+[role="separator"][aria-orientation="horizontal"], .splitter-horizontal { cursor: row-resize; }
+
+/* 7) Image panning style (hand) using standard grab */
+.cursor-hand, .cursor-pan-image { cursor: grab; }
+
+/* 8) Make sure Tailwind's cursor utilities still work; our kit complements them */
+
+/* Hide scrollbars globally while keeping scrollability */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+*::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Webkit */
+}
+
+/* Ensure body and html are scrollable without scrollbars */
+html, body {
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Webkit */
+}
+
+/* Ensure modal scrollbars are hidden */
+.modal-scrollable::-webkit-scrollbar {
+  display: none !important;
+}
+

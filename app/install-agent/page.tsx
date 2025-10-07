@@ -369,7 +369,7 @@ export default function InstallAgentPage() {
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
-                <div className="overflow-x-auto hide-scrollbar">
+                <div className="overflow-x-auto">
                   <pre className="whitespace-nowrap text-sm font-mono">{getInstallCommand()}</pre>
                 </div>
               </div>

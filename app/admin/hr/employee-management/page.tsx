@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import DashboardNavbar from "@/app/components/navbar/DashboardNavbar";
+import PageHeader from "@/components/PageHeader";
 import EmployeeModal from "@/app/components/ui/EmployeeModal";
 import { FaPhoneAlt, FaPlus } from "react-icons/fa";
 import { MdEmail } from "react-icons/md";
@@ -390,50 +391,43 @@ export default function EmployeeManagementPage() {
         <DashboardNavbar />
         <br />
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-[#891F1A]">
-              Employee Management
-            </h1>
-            <p className="text-gray-600">
-              Manage and view all employees across branches
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            {/* Add Employee Button */}
-            <Button
-              onClick={() => setIsAddEmployeeOpen(true)}
-              className="bg-[#891F1A] hover:bg-[#6c1714] text-white px-4 py-2 rounded-lg flex items-center gap-2"
-            >
-              <FaPlus className="w-4 h-4" />
-              Add Employee
-            </Button>
+        <PageHeader 
+          title="Employee Management"
+          description="Manage and view all employees across branches"
+        >
+          {/* Add Employee Button */}
+          <Button
+            onClick={() => setIsAddEmployeeOpen(true)}
+            className="bg-[#891F1A] hover:bg-[#6c1714] text-white px-4 py-2 rounded-lg flex items-center gap-2"
+          >
+            <FaPlus className="w-4 h-4" />
+            Add Employee
+          </Button>
 
-            {/* Branch Filter */}
-            <div className="bg-white/70 backdrop-blur-xl rounded-xl shadow-lg p-2">
-              <button
-                onClick={() => setFilter("dubai")}
-                className={`px-6 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  filter === "dubai"
-                    ? "bg-[#891F1A] text-white shadow-md"
-                    : "text-gray-600 hover:text-[#891F1A]"
-                }`}
-              >
-                Dubai Branch
-              </button>
-              <button
-                onClick={() => setFilter("pakistan")}
-                className={`px-6 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  filter === "pakistan"
-                    ? "bg-green-500 text-white shadow-md"
-                    : "text-gray-600 hover:text-green-500"
-                }`}
-              >
-                Pakistan Branch
-              </button>
-            </div>
+          {/* Branch Filter */}
+          <div className="bg-white/70 backdrop-blur-xl rounded-xl shadow-lg p-2">
+            <button
+              onClick={() => setFilter("dubai")}
+              className={`px-6 py-2 rounded-lg font-medium transition-all duration-200 ${
+                filter === "dubai"
+                  ? "bg-[#891F1A] text-white shadow-md"
+                  : "text-gray-600 hover:text-[#891F1A]"
+              }`}
+            >
+              Dubai Branch
+            </button>
+            <button
+              onClick={() => setFilter("pakistan")}
+              className={`px-6 py-2 rounded-lg font-medium transition-all duration-200 ${
+                filter === "pakistan"
+                  ? "bg-green-500 text-white shadow-md"
+                  : "text-gray-600 hover:text-green-500"
+              }`}
+            >
+              Pakistan Branch
+            </button>
           </div>
-        </div>
+        </PageHeader>
 
         {/* Employee cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-6">

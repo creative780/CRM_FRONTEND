@@ -146,7 +146,7 @@ export default function EmployeeModal({ employee, onClose }: EmployeeModalProps)
           </button>
 
           {/* Modal Scrollable Content */}
-          <div className="p-10 pt-6 overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-300 scrollbar-track-transparent">
+          <div className="p-10 pt-6 overflow-y-auto">
 
             {/* Header */}
             <div className="flex items-center gap-6 mb-8">

@@ -228,7 +228,7 @@ export default function ClientManagement() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Client Management</h1>
+          <h1 className="text-3xl font-bold text-[#891F1A]">Client Management</h1>
           <p className="text-gray-600">Manage your client relationships and accounts</p>
         </div>
         <Button onClick={() => setIsAddClientOpen(true)}>

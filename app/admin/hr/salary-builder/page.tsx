@@ -266,7 +266,8 @@ export default function SalaryBuilderPage() {
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
       <DashboardNavbar />
       <br />
-      <h1 className="text-4xl font-extrabold text-[#891F1A] mb-6">Salary Builder</h1>
+      <h1 className="text-3xl font-bold text-[#891F1A] mb-1">Salary Builder</h1>
+      <p className="text-gray-600 mb-6">Create and manage employee salary structures and calculations</p>
 
       {/* Form (left) + Preview (right) */}
       <div className="flex flex-col lg:flex-row gap-3">

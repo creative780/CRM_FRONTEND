@@ -245,8 +245,8 @@ export default function DesignKanbanPage() {
     <div className="p-6 space-y-6">
       <div className="bg-gradient-to-r from-maroon-600 to-maroon-400 text-white p-6 rounded-xl shadow-lg flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Design Kanban</h1>
-          <p className="text-sm opacity-80">Track design orders in progress</p>
+          <h1 className="text-3xl font-bold">Design Kanban</h1>
+          <p className="text-gray-600">Track design orders in progress</p>
         </div>
       </div>
 

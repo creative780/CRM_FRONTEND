@@ -306,7 +306,10 @@ export default function Page() {
       <br />
       <div className="max-w-[96rem] mx-auto h-full flex flex-col">
         <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
-          <h2 className="text-3xl font-bold text-[#891F1A]">Orders</h2>
+          <div>
+            <h2 className="text-3xl font-bold text-[#891F1A] mb-1">Orders</h2>
+            <p className="text-gray-600">Manage and track all customer orders and their status</p>
+          </div>
 
           <div className="flex flex-wrap gap-3 items-center">
             {/* Status Dropdown */}
@@ -383,7 +386,7 @@ export default function Page() {
           )}
 
           {!loading && !error && (
-            <div className="w-full h-full overflow-y-auto overflow-x-auto scrollbar-custom">
+            <div className="w-full h-full overflow-y-auto overflow-x-auto">
               <table className="w-full table-auto text-xs divide-y divide-gray-100 text-center border-collapse">
               <thead className="font-semibold sticky top-0 z-10">
                 <tr className="bg-[#891F1A] rounded-t-lg w-full">

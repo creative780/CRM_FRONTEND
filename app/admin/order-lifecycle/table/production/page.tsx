@@ -404,12 +404,13 @@ export default function ProductionDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <DashboardNavbar />
-      <Toaster position="top-right" />
-      
-      <div className="p-6">
+      <div className="p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
+        <DashboardNavbar />
+        <br />
+        <Toaster position="top-right" />
+        
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Production Dashboard</h1>
+          <h1 className="text-3xl font-bold text-[#891F1A] mb-1">Production Dashboard</h1>
           <p className="text-gray-600">Manage production orders and machine assignments</p>
         </div>
 
@@ -461,14 +462,14 @@ export default function ProductionDashboard() {
                           <div className="flex items-center gap-2">
                             <Settings className="w-5 h-5 text-gray-400" />
                             <span className="text-sm text-gray-500">Click to assign machines</span>
-        </div>
-        </div>
-      </div>
+                          </div>
+                        </div>
+                      </div>
                     ))}
                   </div>
-                      )}
-                    </div>
-                  </div>
+                )}
+              </div>
+            </div>
 
             {/* In Progress Orders */}
             <div className="bg-white rounded-lg shadow">
@@ -477,8 +478,8 @@ export default function ProductionDashboard() {
                   In Progress ({inProgressOrders.length})
                 </h2>
                 <p className="text-sm text-gray-600">Orders with machine assignments being worked on</p>
-                          </div>
-                          <div className="p-4">
+              </div>
+              <div className="p-4">
                 {inProgressOrders.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
                     No orders in progress.
@@ -508,18 +509,18 @@ export default function ProductionDashboard() {
                             <p className="text-xs text-gray-500">
                               {row.date} at {row.time}
                             </p>
-                                  </div>
+                          </div>
                           <div className="flex items-center gap-2">
                             <Play className="w-5 h-5 text-green-500" />
                             <span className="text-sm text-gray-500">In production</span>
-                                  </div>
-                                </div>
-                            </div>
-                    ))}
-                              </div>
-                            )}
                           </div>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* Completed Orders */}
             <div className="bg-white rounded-lg shadow">
@@ -528,8 +529,8 @@ export default function ProductionDashboard() {
                   Completed ({completedOrders.length})
                 </h2>
                 <p className="text-sm text-gray-600">Orders ready for delivery</p>
-                          </div>
-                          <div className="p-4">
+              </div>
+              <div className="p-4">
                 {completedOrders.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
                     No completed orders.
@@ -552,28 +553,27 @@ export default function ProductionDashboard() {
                               <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(row.status)}`}>
                                 {row.status.replace('_', ' ')}
                               </span>
-                                        </div>
+                            </div>
                             <p className="text-sm text-gray-600 mb-2">
                               {row.clientName} • {row.items.length} product(s) • Ready for delivery
                             </p>
                             <p className="text-xs text-gray-500">
                               {row.date} at {row.time}
                             </p>
-                                      </div>
+                          </div>
                           <div className="flex items-center gap-2">
                             <CheckCircle className="w-5 h-5 text-green-500" />
                             <span className="text-sm text-gray-500">Ready</span>
-                                </div>
-                                      </div>
-                                    </div>
-                                  ))}
-                              </div>
-                            )}
                           </div>
                         </div>
                       </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         )}
-                          </div>
 
       {/* Order Details Modal */}
       <Transition appear show={isModalOpen} as={Fragment}>
@@ -801,6 +801,7 @@ export default function ProductionDashboard() {
           </div>
         </Dialog>
       </Transition>
+      </div>
     </div>
   );
 }

@@ -14,6 +14,7 @@ import {
   AlertTriangle, ChevronLeft, ChevronRight, Trash2, Lock
 } from "lucide-react";
 import DashboardNavbar from "@/app/components/navbar/DashboardNavbar";
+import PageHeader from "@/components/PageHeader";
 
 import { getApiBaseUrl, isProduction } from '@/lib/env';
 
@@ -595,13 +596,15 @@ export default function EmployeeMonitoringWithLogin() {
   // Prevent hydration mismatches by not rendering until hydrated
   if (!isHydrated) {
     return (
-      <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
-      <DashboardNavbar />
-      <br />
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#891F1A] mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading...</p>
+      <div className="min-h-screen bg-gray-100">
+        <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
+          <DashboardNavbar />
+          <br />
+          <div className="flex-1 flex items-center justify-center p-6">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#891F1A] mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading...</p>
+            </div>
           </div>
         </div>
       </div>
@@ -610,49 +613,50 @@ export default function EmployeeMonitoringWithLogin() {
 
   if (!authed) {
     return (
-      <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
-        <DashboardNavbar />
-        <br />
-        <div className="flex items-center justify-center p-6">
-          <Card className="w-full max-w-md">
-            <CardHeader className="text-center">
-              <div className="mx-auto w-12 h-12 rounded-full bg-[#891F1A]/10 flex items-center justify-center">
-                <Lock className="h-6 w-6 text-[#891F1A]" />
-              </div>
-              <CardTitle className="mt-3">Super Admin Login</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Username</label>
-                  <Input value={u} onChange={(e)=>setU(e.target.value)} placeholder="saim123" />
+      <div className="min-h-screen bg-gray-100">
+        <div className="p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
+          <DashboardNavbar />
+          <br />
+          <div className="flex items-center justify-center p-6">
+            <Card className="w-full max-w-md">
+              <CardHeader className="text-center">
+                <div className="mx-auto w-12 h-12 rounded-full bg-[#891F1A]/10 flex items-center justify-center">
+                  <Lock className="h-6 w-6 text-[#891F1A]" />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Password</label>
-                  <Input type="password" value={p} onChange={(e)=>setP(e.target.value)} placeholder="••••••••" />
-                </div>
-                {loginErr && <p className="text-sm text-red-600">{loginErr}</p>}
-                <Button type="submit" className="w-full bg-[#891F1A] hover:bg-[#6c1714] text-white">Login</Button>
-              </form>
-            </CardContent>
-          </Card>
+                <CardTitle className="mt-3">Super Admin Login</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Username</label>
+                    <Input value={u} onChange={(e)=>setU(e.target.value)} placeholder="saim123" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Password</label>
+                    <Input type="password" value={p} onChange={(e)=>setP(e.target.value)} placeholder="••••••••" />
+                  </div>
+                  {loginErr && <p className="text-sm text-red-600">{loginErr}</p>}
+                  <Button type="submit" className="w-full bg-[#891F1A] hover:bg-[#6c1714] text-white">Login</Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
-      <DashboardNavbar />
-      <br />
+    <div className="min-h-screen bg-gray-100">
+      <div className="p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
+        <DashboardNavbar />
+        <br />
 
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-bold text-[#891F1A]">Employee Monitoring</h1>
-          <p className="text-gray-600">Monitor employee activity and productivity</p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Header */}
+        <PageHeader 
+          title="Employee Monitoring"
+          description="Monitor employee activity and productivity"
+        >
           {connected !== null && (
             <span className={`text-xs px-2 py-1 rounded-full border ${connected ? "text-green-700 border-green-300 bg-green-50" : "text-red-700 border-red-300 bg-red-50"}`}>
               {connected ? "Connected to API" : `Not connected${fetchErr?` — ${fetchErr}`:""}`}
@@ -671,8 +675,7 @@ export default function EmployeeMonitoringWithLogin() {
             {tracking ? "Stop Tracking" : "Start Tracking"}
           </Button>
           <Button className="bg-[#891F1A] text-white hover:bg-[#6c1714]" onClick={handleExportCSV}>Export CSV</Button>
-        </div>
-      </div>
+        </PageHeader>
 
       {/* Capture target controls */}
       <Card>
@@ -712,7 +715,7 @@ export default function EmployeeMonitoringWithLogin() {
       </Card>
 
       {/* Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Employees</CardTitle><Monitor className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold text-[#891F1A]">{employees.length}</div></CardContent></Card>
         <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Online Now</CardTitle><Activity className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold text-[#891F1A]">{employees.filter(e => e.status==="online").length}</div></CardContent></Card>
         <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Idle</CardTitle><Clock className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold text-[#891F1A]">{employees.filter(e => e.status==="idle").length}</div></CardContent></Card>
@@ -757,7 +760,7 @@ export default function EmployeeMonitoringWithLogin() {
       </div>
 
       {/* Employee Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         {filteredEmployees.map((employee) => {
           const idleMinutes = idleTimeToMinutes(employee.idleTime);
           const showIdleAlert = idleMinutes > 60;
@@ -863,7 +866,11 @@ export default function EmployeeMonitoringWithLogin() {
           {/* Subtle overlay effect */}
           <div className="absolute inset-0 bg-white/5 backdrop-blur-sm"></div>
           <div 
-            className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto border border-gray-200 animate-in zoom-in-95 duration-300"
+            className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto border border-gray-200 animate-in zoom-in-95 duration-300 modal-scrollable"
+            style={{ 
+              scrollbarWidth: 'none', 
+              msOverflowStyle: 'none'
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative">
@@ -990,6 +997,7 @@ export default function EmployeeMonitoringWithLogin() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -395,7 +395,7 @@ export default function InventoryPage() {
         {/* Table */}
         <div className="flex-1 rounded-xl shadow bg-white overflow-hidden">
           <div
-            className="w-full h-full overflow-y-auto overflow-x-auto pr-2 scrollbar-custom"
+            className="w-full h-full overflow-y-auto overflow-x-auto pr-2"
             style={{ scrollBehavior: 'smooth' }}
           >
             <table className="w-full table-auto text-xs text-center divide-y divide-gray-100">

@@ -15,6 +15,7 @@ import {
   BarChart3, PieChart
 } from "lucide-react";
 import DashboardNavbar from "@/app/components/navbar/DashboardNavbar";
+import PageHeader from "@/components/PageHeader";
 import { getToken } from "@/lib/auth";
 import { useMonitoringWebSocket } from "@/lib/websocket";
 import DeviceSettingsModal from "./DeviceSettingsModal";
@@ -337,12 +338,15 @@ function MonitoringDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <DashboardNavbar />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-[#891F1A]" />
-            <p className="text-gray-600">Loading devices...</p>
+      <div className="min-h-screen bg-gray-100">
+        <div className="p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
+          <DashboardNavbar />
+          <br />
+          <div className="flex items-center justify-center p-6">
+            <div className="text-center">
+              <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-[#891F1A]" />
+              <p className="text-gray-600">Loading devices...</p>
+            </div>
           </div>
         </div>
       </div>
@@ -350,34 +354,32 @@ function MonitoringDashboard() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <DashboardNavbar />
-      
-      <div className="flex-1 p-6 space-y-6">
+    <div className="min-h-screen bg-gray-100">
+      <div className="p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
+        <DashboardNavbar />
+        <br />
+        
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-[#891F1A]">Device Monitoring</h1>
-            <p className="text-gray-600">Monitor connected devices and their activity</p>
+        <PageHeader 
+          title="Device Monitoring"
+          description="Monitor connected devices and their activity"
+        >
+          {/* WebSocket connection status */}
+          <div className="flex items-center gap-2 text-sm">
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+            <span className={isConnected ? 'text-green-600' : 'text-red-600'}>
+              {isConnected ? 'Live' : 'Offline'}
+            </span>
           </div>
-          <div className="flex items-center gap-2">
-            {/* WebSocket connection status */}
-            <div className="flex items-center gap-2 text-sm">
-              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-              <span className={isConnected ? 'text-green-600' : 'text-red-600'}>
-                {isConnected ? 'Live' : 'Offline'}
-              </span>
-            </div>
-            <Button
-              variant="outline"
-              onClick={fetchDevices}
-              disabled={loading}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          </div>
-        </div>
+          <Button
+            variant="outline"
+            onClick={fetchDevices}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </PageHeader>
 
         {/* Tab Navigation */}
         <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
@@ -411,7 +413,7 @@ function MonitoringDashboard() {
         )}
 
         {/* Enhanced Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Devices</CardTitle>
@@ -488,7 +490,7 @@ function MonitoringDashboard() {
 
         {/* Activity Overview Charts */}
         {activityData.length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
             {/* Activity Summary */}
             <Card>
               <CardHeader>
@@ -566,7 +568,7 @@ function MonitoringDashboard() {
         )}
 
         {/* Enhanced Filters */}
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
             <Input
@@ -618,7 +620,7 @@ function MonitoringDashboard() {
         {activeTab === 'devices' && (
           <>
             {/* Device Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredDevices.map((device) => (
             <Card key={device.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
@@ -834,7 +836,7 @@ function MonitoringDashboard() {
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Device Info */}
                   <Card>
                     <CardHeader>

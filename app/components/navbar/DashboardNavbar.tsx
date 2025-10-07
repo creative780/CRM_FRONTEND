@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { FaUserCircle } from "react-icons/fa";
+import NoSSR from "@/components/NoSSR";
 
 type RoleKey = "sales" | "designer" | "production" | "admin" | "default";
 
@@ -132,7 +133,10 @@ export default function DashboardNavbar() {
     pathname.startsWith("/admin/orders/");
 
   return (
-    <nav className="sticky top-0 z-50 bg-[#891F1A] text-white px-4 py-2 flex items-center justify-between gap-4 overflow-hidden whitespace-nowrap rounded-xl shadow-md mb-4 h-14">
+    <nav 
+      className="sticky top-0 z-50 bg-[#891F1A] text-white px-4 py-2 flex items-center justify-between gap-4 overflow-hidden whitespace-nowrap rounded-xl shadow-md mb-4 h-14"
+      suppressHydrationWarning
+    >
       {/* Left: Logo + Brand */}
       <div className="flex items-center gap-2 shrink-0 h-full">
         <img src="/logo.jpg" alt="Romix Logo" className="w-6 h-6 flex-shrink-0" />
@@ -141,20 +145,22 @@ export default function DashboardNavbar() {
 
       {/* Center: Role-Based Nav (hide until ready to prevent flicker) */}
       <div className="flex gap-2 items-center justify-center text-sm font-medium shrink-0 flex-1">
-        {ready &&
-          navLinks.map((link) => {
-            const active = link.isOrders ? isOrdersActive : isActive(link.href);
-            return (
-              <Link 
-                key={link.id} 
-                href={link.href} 
-                className={getLinkClass(active)}
-                style={{ lineHeight: '1.25rem' }}
-              >
-                {link.label}
-              </Link>
-            );
-          })}
+        <NoSSR fallback={<div className="flex gap-2 items-center justify-center text-sm font-medium shrink-0 flex-1" />}>
+          {ready &&
+            navLinks.map((link) => {
+              const active = link.isOrders ? isOrdersActive : isActive(link.href);
+              return (
+                <Link 
+                  key={link.id} 
+                  href={link.href} 
+                  className={getLinkClass(active)}
+                  style={{ lineHeight: '1.25rem' }}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+        </NoSSR>
       </div>
 
       {/* Right: Profile + Logout */}
@@ -163,13 +169,15 @@ export default function DashboardNavbar() {
           <FaUserCircle className="text-white text-xl flex-shrink-0" />
           <span className="text-xs font-medium text-white whitespace-nowrap">{username || "Guest"}</span>
         </div>
-        <button
-          onClick={handleLogout}
-          className="text-xs px-2.5 py-1 bg-red-500 hover:bg-red-600 rounded-full font-medium transition whitespace-nowrap"
-          style={{ lineHeight: '1rem' }}
-        >
-          Logout
-        </button>
+        <NoSSR fallback={<div className="w-16 h-6 bg-red-500 rounded-full" />}>
+          <button
+            onClick={handleLogout}
+            className="text-xs px-2.5 py-1 bg-red-500 hover:bg-red-600 rounded-full font-medium transition whitespace-nowrap"
+            style={{ lineHeight: '1rem' }}
+          >
+            Logout
+          </button>
+        </NoSSR>
       </div>
     </nav>
   );

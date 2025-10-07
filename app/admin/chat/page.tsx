@@ -32,6 +32,7 @@ import {
   Ellipsis,
 } from "lucide-react";
 import DashboardNavbar from "@/app/components/navbar/DashboardNavbar";
+import PageHeader from "@/components/PageHeader";
 import { toast, Toaster } from "react-hot-toast";
 
 /**
@@ -586,7 +587,6 @@ export default function AdminChatPage() {
   // scroll navigation
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [hasScrolledUp, setHasScrolledUp] = useState(false);
-  const [showScrollbar, setShowScrollbar] = useState(true);
 
   // ---- CALLS (multi-party) ----
   type CallsMap = Record<string, ActiveCall | undefined>;
@@ -1260,42 +1260,14 @@ export default function AdminChatPage() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <style jsx>{`
-        .messages-container::-webkit-scrollbar {
-          width: 6px;
-        }
-        .messages-container::-webkit-scrollbar-track {
-          background: #f3f4f6;
-          border-radius: 3px;
-        }
-        .messages-container::-webkit-scrollbar-thumb {
-          background: #891f1a;
-          border-radius: 3px;
-        }
-        .messages-container::-webkit-scrollbar-thumb:hover {
-          background: #6c1714;
-        }
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
        <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
   <DashboardNavbar />
   <br />
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-[#891F1A]">
-              Team Communication
-            </h1>
-            <p className="text-gray-600">
-              Chat with team members, share files, and manage conversations
-            </p>
-          </div>
+        <PageHeader 
+          title="Team Communication"
+          description="Chat with team members, share files, and manage conversations"
+        >
           <div className="flex items-center gap-4">
             <div className="bg-white/70 backdrop-blur-xl rounded-xl shadow-lg p-4 flex items-center gap-3">
               <div className="flex items-center gap-2">
@@ -1313,7 +1285,7 @@ export default function AdminChatPage() {
               </div>
             </div>
           </div>
-        </div>
+        </PageHeader>
         {/* ONGOING CALL STICKY BANNER (when connected) */}
         {myCall && myCall.status === "connected" && callContact && (
           <div className="sticky top-0 z-[1200]">
@@ -1722,14 +1694,8 @@ export default function AdminChatPage() {
               {/* Messages */}
               <div
                 ref={messagesContainerRef}
-                className={`flex-1 overflow-y-auto px-6 py-4 space-y-4 min-h-0 bg-gray-50 relative messages-container w-full ${
-                  !showScrollbar ? "scrollbar-hide" : ""
-                }`}
+                className="flex-1 overflow-y-auto px-6 py-4 space-y-4 min-h-0 bg-gray-50 relative w-full"
                 style={{
-                  scrollbarWidth: showScrollbar ? "auto" : "none",
-                  scrollbarColor: showScrollbar
-                    ? "#891F1A #f3f4f6"
-                    : "transparent",
                   minHeight: "200px",
                   maxHeight: "calc(100vh - 300px)",
                 }}
@@ -2107,15 +2073,6 @@ export default function AdminChatPage() {
                       <div className="text-xs text-gray-600 font-medium">
                         Scroll
                       </div>
-                      <button
-                        onClick={() => setShowScrollbar(!showScrollbar)}
-                        className="text-xs text-[#891F1A] hover:text-[#6c1714] transition-colors"
-                        title={
-                          showScrollbar ? "Hide scrollbar" : "Show scrollbar"
-                        }
-                      >
-                        {showScrollbar ? "Hide" : "Show"}
-                      </button>
                     </div>
                     <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
                       <div
