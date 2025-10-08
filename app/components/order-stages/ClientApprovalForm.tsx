@@ -5,12 +5,20 @@ import { Separator } from "../Separator";
 import { Button } from "../Button";
 import { CheckCircle } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { saveFileMetaToStorage, loadFileMetaFromStorage, clearFilesFromStorage } from "@/app/lib/fileStorage";
 import { isProduction } from "@/lib/env";
+import UploadProgressBar from "../UploadProgressBar";
 
 export default function ClientApprovalForm({ formData, setFormData }: any) {
   const clientApprovalFiles = formData.clientApprovalFiles || [];
+  
+  // Upload progress bar states
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploadComplete, setIsUploadComplete] = useState(false);
+  const [showUploadProgress, setShowUploadProgress] = useState(false);
+  const [currentUploadFileName, setCurrentUploadFileName] = useState('');
+  const [currentUploadFileSize, setCurrentUploadFileSize] = useState(0);
 
   // Load files from localStorage on component mount
   useEffect(() => {
@@ -42,7 +50,7 @@ export default function ClientApprovalForm({ formData, setFormData }: any) {
     }
   }, [clientApprovalFiles]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
     const newFiles = selectedFiles.filter(
       (file) =>
@@ -51,6 +59,34 @@ export default function ClientApprovalForm({ formData, setFormData }: any) {
             existing.name === file.name && existing.size === file.size
         )
     );
+
+    // Process files with progress bar
+    for (let i = 0; i < newFiles.length; i++) {
+      const file = newFiles[i];
+      
+      // Show progress bar for this file
+      setCurrentUploadFileName(file.name);
+      setCurrentUploadFileSize(file.size);
+      setUploadProgress(0);
+      setIsUploadComplete(false);
+      setShowUploadProgress(true);
+      
+      // Simulate upload progress (since these are local files, we'll just show a quick progress)
+      for (let progress = 0; progress <= 100; progress += 20) {
+        setUploadProgress(progress);
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      // Mark as complete
+      setUploadProgress(100);
+      setIsUploadComplete(true);
+      
+      // Wait a moment to show completion
+      await new Promise(resolve => setTimeout(resolve, 800));
+    }
+    
+    // Hide progress bar after all files processed
+    setShowUploadProgress(false);
 
     setFormData({
       ...formData,
@@ -172,6 +208,14 @@ export default function ClientApprovalForm({ formData, setFormData }: any) {
           12h 45m left
         </span>
       </div>
+
+      <UploadProgressBar
+        progress={uploadProgress}
+        isComplete={isUploadComplete}
+        fileName={currentUploadFileName}
+        fileSize={currentUploadFileSize}
+        show={showUploadProgress}
+      />
     </Card>
   );
 }

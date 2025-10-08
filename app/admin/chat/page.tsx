@@ -34,6 +34,7 @@ import {
 import DashboardNavbar from "@/app/components/navbar/DashboardNavbar";
 import PageHeader from "@/components/PageHeader";
 import { toast, Toaster } from "react-hot-toast";
+import UploadProgressBar from "@/app/components/UploadProgressBar";
 
 /**
  * Included:
@@ -577,6 +578,13 @@ export default function AdminChatPage() {
   const [attachmentsPending, setAttachmentsPending] = useState<File[]>([]);
   const [extraRecipients, setExtraRecipients] = useState<string[]>([]);
 
+  // Upload progress bar states
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploadComplete, setIsUploadComplete] = useState(false);
+  const [showUploadProgress, setShowUploadProgress] = useState(false);
+  const [currentUploadFileName, setCurrentUploadFileName] = useState('');
+  const [currentUploadFileSize, setCurrentUploadFileSize] = useState(0);
+
   // voice note recorder
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -585,7 +593,7 @@ export default function AdminChatPage() {
   const [elapsed, setElapsed] = useState(0);
 
   // scroll navigation
-  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [isAtBottom, setIsAtBottom] = useState(false);
   const [hasScrolledUp, setHasScrolledUp] = useState(false);
 
   // ---- CALLS (multi-party) ----
@@ -747,13 +755,19 @@ export default function AdminChatPage() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const [scrollPosition, setScrollPosition] = useState(0);
+  const didInitialRenderRef = useRef(true);
 
   // Auto-scroll to bottom when new messages arrive (only if user is at bottom)
   useEffect(() => {
+    if (didInitialRenderRef.current) {
+      didInitialRenderRef.current = false;
+      return; // skip auto-scroll on first render
+    }
     if (isAtBottom) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [activeConversation?.messages.length, isAtBottom]);
+  
 
   // Handle scroll position tracking
   useEffect(() => {
@@ -1039,9 +1053,40 @@ export default function AdminChatPage() {
     }
   };
 
-  const onFilePick = (files: FileList | null) => {
+  const onFilePick = async (files: FileList | null) => {
     if (!files || !files.length) return;
-    setAttachmentsPending((prev) => [...prev, ...Array.from(files)]);
+    
+    const newFiles = Array.from(files);
+    
+    // Process files with progress bar
+    for (let i = 0; i < newFiles.length; i++) {
+      const file = newFiles[i];
+      
+      // Show progress bar for this file
+      setCurrentUploadFileName(file.name);
+      setCurrentUploadFileSize(file.size);
+      setUploadProgress(0);
+      setIsUploadComplete(false);
+      setShowUploadProgress(true);
+      
+      // Simulate upload progress (since these are local files, we'll just show a quick progress)
+      for (let progress = 0; progress <= 100; progress += 20) {
+        setUploadProgress(progress);
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      // Mark as complete
+      setUploadProgress(100);
+      setIsUploadComplete(true);
+      
+      // Wait a moment to show completion
+      await new Promise(resolve => setTimeout(resolve, 800));
+    }
+    
+    // Hide progress bar after all files processed
+    setShowUploadProgress(false);
+    
+    setAttachmentsPending((prev) => [...prev, ...newFiles]);
   };
   const removePending = (name: string) =>
     setAttachmentsPending((prev) => prev.filter((f) => f.name !== name));
@@ -2863,6 +2908,14 @@ export default function AdminChatPage() {
           onCreate={createContact}
         />
         <Toaster position="top-center" />
+        
+        <UploadProgressBar
+          progress={uploadProgress}
+          isComplete={isUploadComplete}
+          fileName={currentUploadFileName}
+          fileSize={currentUploadFileSize}
+          show={showUploadProgress}
+        />
       </div>
     </div>
   );

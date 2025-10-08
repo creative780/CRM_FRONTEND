@@ -223,7 +223,8 @@ export const uploadOrderFile = async (
   stage: string,
   description?: string,
   productRelated?: string,
-  visibleToRoles?: string[]
+  visibleToRoles?: string[],
+  onProgress?: (progress: number) => void
 ): Promise<OrderFile> => {
   const formData = new FormData();
   formData.append('file', file);
@@ -235,20 +236,52 @@ export const uploadOrderFile = async (
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
 
-  const response = await fetch(`${API_BASE}/api/orders/${orderId}/files/upload/`, {
-    method: 'POST',
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: formData,
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    // Track upload progress
+    if (onProgress) {
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const percentComplete = (e.loaded / e.total) * 100;
+          onProgress(percentComplete);
+        }
+      });
+    }
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const response = JSON.parse(xhr.responseText);
+          resolve(response);
+        } catch (error) {
+          reject(new Error('Invalid response from server'));
+        }
+      } else {
+        try {
+          const errorText = xhr.responseText;
+          reject(new Error(`Upload failed with status ${xhr.status}: ${errorText}`));
+        } catch {
+          reject(new Error(`Upload failed with status ${xhr.status}`));
+        }
+      }
+    });
+
+    xhr.addEventListener('error', () => {
+      reject(new Error('Network error occurred during upload'));
+    });
+
+    xhr.addEventListener('abort', () => {
+      reject(new Error('Upload was aborted'));
+    });
+
+    xhr.open('POST', `${API_BASE}/api/orders/${orderId}/files/upload/`);
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
+
+    xhr.send(formData);
   });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to upload file: ${errorText}`);
-  }
-
-  return response.json();
 };
 
 export const getOrderFiles = async (orderId: number): Promise<OrderFile[]> => {

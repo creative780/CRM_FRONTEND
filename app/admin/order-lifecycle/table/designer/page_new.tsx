@@ -8,6 +8,7 @@ import { toast, Toaster } from "react-hot-toast";
 import { ordersApi, Order } from "@/lib/orders-api";
 import { requestDesignApproval, sendToProduction, uploadOrderFile, getOrderFiles } from "@/lib/workflowApi";
 import { CheckCircle, Send, Upload, FileText, Package, X, AlertCircle } from "lucide-react";
+import UploadProgressBar from "@/app/components/UploadProgressBar";
 
 /* Types */
 type Urgency = "Urgent" | "High" | "Normal" | "Low";
@@ -86,6 +87,13 @@ export default function DesignerOrdersTablePage() {
   const [requestingApproval, setRequestingApproval] = useState(false);
   const [sendingToProduction, setSendingToProduction] = useState(false);
 
+  // Upload progress bar states
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploadComplete, setIsUploadComplete] = useState(false);
+  const [showUploadProgress, setShowUploadProgress] = useState(false);
+  const [currentUploadFileName, setCurrentUploadFileName] = useState('');
+  const [currentUploadFileSize, setCurrentUploadFileSize] = useState(0);
+
   const currentUsername = typeof window !== 'undefined' ? localStorage.getItem('admin_username') || '' : '';
 
   // Fetch orders
@@ -150,6 +158,11 @@ export default function DesignerOrdersTablePage() {
 
     const file = event.target.files[0];
     setUploadingFile(true);
+    setUploadProgress(0);
+    setIsUploadComplete(false);
+    setShowUploadProgress(true);
+    setCurrentUploadFileName(file.name);
+    setCurrentUploadFileSize(file.size);
 
     try {
       const uploadedFile = await uploadOrderFile(
@@ -159,8 +172,15 @@ export default function DesignerOrdersTablePage() {
         'design',
         'Design file uploaded by designer',
         '',
-        ['admin', 'sales', 'designer']
+        ['admin', 'sales', 'designer'],
+        (progress) => {
+          setUploadProgress(progress);
+        }
       );
+
+      // Mark as complete
+      setUploadProgress(100);
+      setIsUploadComplete(true);
 
       setUploadedFiles(prev => [...prev, {
         name: uploadedFile.file_name,
@@ -170,9 +190,18 @@ export default function DesignerOrdersTablePage() {
       }]);
 
       toast.success('File uploaded successfully!');
+
+      // Hide progress bar after 2 seconds
+      setTimeout(() => {
+        setShowUploadProgress(false);
+        setUploadProgress(0);
+        setIsUploadComplete(false);
+      }, 2000);
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast.error(`Upload failed: ${errorMessage}`);
+      setShowUploadProgress(false);
     } finally {
       setUploadingFile(false);
       event.target.value = '';
@@ -657,6 +686,14 @@ export default function DesignerOrdersTablePage() {
           </div>
         </Dialog>
       </Transition>
+
+      <UploadProgressBar
+        progress={uploadProgress}
+        isComplete={isUploadComplete}
+        fileName={currentUploadFileName}
+        fileSize={currentUploadFileSize}
+        show={showUploadProgress}
+      />
     </div>
   );
 }

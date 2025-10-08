@@ -22,6 +22,7 @@ import {
   updateOrderFile,
   OrderFile 
 } from '@/lib/workflowApi';
+import UploadProgressBar from './UploadProgressBar';
 
 interface FileManagerProps {
   orderId: number;
@@ -51,6 +52,13 @@ const FileManager: React.FC<FileManagerProps> = ({
   const [editingFile, setEditingFile] = useState<number | null>(null);
   const [editDescription, setEditDescription] = useState('');
   const [editProductRelated, setEditProductRelated] = useState('');
+  
+  // Upload progress bar states
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploadComplete, setIsUploadComplete] = useState(false);
+  const [showUploadProgress, setShowUploadProgress] = useState(false);
+  const [uploadingFileName, setUploadingFileName] = useState('');
+  const [uploadingFileSize, setUploadingFileSize] = useState(0);
 
   const currentUsername = typeof window !== 'undefined' ? localStorage.getItem('admin_username') || '' : '';
   const currentUserRole = typeof window !== 'undefined' ? localStorage.getItem('admin_role') || 'admin' : 'admin';
@@ -97,6 +105,11 @@ const FileManager: React.FC<FileManagerProps> = ({
 
     const file = event.target.files[0];
     setUploading(true);
+    setUploadProgress(0);
+    setIsUploadComplete(false);
+    setShowUploadProgress(true);
+    setUploadingFileName(file.name);
+    setUploadingFileSize(file.size);
 
     try {
       const uploadedFile = await uploadOrderFile(
@@ -106,8 +119,15 @@ const FileManager: React.FC<FileManagerProps> = ({
         stage,
         `File uploaded by ${currentUsername}`,
         '',
-        visibleToRoles
+        visibleToRoles,
+        (progress) => {
+          setUploadProgress(progress);
+        }
       );
+
+      // Mark as complete
+      setUploadProgress(100);
+      setIsUploadComplete(true);
 
       // Add to local state
       const newFile: FileWithPreview = {
@@ -119,10 +139,19 @@ const FileManager: React.FC<FileManagerProps> = ({
       setFiles(prev => [newFile, ...prev]);
       onFilesChange?.([newFile, ...files]);
       toast.success('File uploaded successfully!');
+
+      // Hide progress bar after 2 seconds
+      setTimeout(() => {
+        setShowUploadProgress(false);
+        setUploadProgress(0);
+        setIsUploadComplete(false);
+      }, 2000);
+
     } catch (error) {
       console.error('Upload failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast.error(`Upload failed: ${errorMessage}`);
+      setShowUploadProgress(false);
     } finally {
       setUploading(false);
       event.target.value = '';
@@ -264,7 +293,7 @@ const FileManager: React.FC<FileManagerProps> = ({
                   )}
                   
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2">
+                    <div className="flex flex-col">
                       <h4 className="text-sm font-medium text-gray-900 truncate">
                         {file.file_name}
                       </h4>
@@ -358,6 +387,14 @@ const FileManager: React.FC<FileManagerProps> = ({
           ))}
         </div>
       )}
+
+      <UploadProgressBar
+        progress={uploadProgress}
+        isComplete={isUploadComplete}
+        fileName={uploadingFileName}
+        fileSize={uploadingFileSize}
+        show={showUploadProgress}
+      />
     </div>
   );
 };

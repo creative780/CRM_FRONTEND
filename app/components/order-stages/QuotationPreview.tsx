@@ -2,17 +2,13 @@
 
 import { useRef, useState, useEffect } from "react";
 import { Plus, Minus, X } from "lucide-react";
+import { toast } from "react-hot-toast";
 import ProductSearchModal from "../modals/ProductSearchModal";
 import ProductConfigModal from "../modals/ProductConfigModal";
 import { BaseProduct, ConfiguredProduct } from "../../types/products";
-import { isProduction } from "@/lib/env";
+import { isProduction, getApiBaseUrl } from "@/lib/env";
 
-// TypeScript fix for html2pdf global
-declare global {
-  interface Window {
-    html2pdf: any;
-  }
-}
+// No longer using html2pdf library
 
 interface QuotationPreviewProps {
   formData: any;
@@ -26,103 +22,590 @@ export default function QuotationPreview({
   isEditable = false 
 }: QuotationPreviewProps) {
   const printRef = useRef<HTMLDivElement>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editNotes, setEditNotes] = useState("");
-  const [isPDFReady, setIsPDFReady] = useState(false);
+  // Removed isPDFReady state as we're no longer using html2pdf
   const [showProductSearch, setShowProductSearch] = useState(false);
   const [showProductConfig, setShowProductConfig] = useState(false);
   const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
   const [pendingBaseProduct, setPendingBaseProduct] = useState<BaseProduct | null>(null);
   const [pendingInitialQty, setPendingInitialQty] = useState<number | undefined>(undefined);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+  const [uploading, setUploading] = useState(false);
 
-  // Dynamically load html2pdf.js from CDN with retry fallback
-  useEffect(() => {
-    const checkLoaded = () => {
-      if (window.html2pdf) {
-        setIsPDFReady(true);
-        if (!isProduction) {
-          console.log("✅ html2pdf.js loaded");
-        }
-      } else {
-        if (!isProduction) {
-          console.warn("Retrying html2pdf load check...");
-        }
-        setTimeout(checkLoaded, 300);
-      }
-    };
+  // No longer loading html2pdf library - using native browser print API instead
 
-    const script = document.createElement("script");
-    script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
-    script.async = true;
-    script.onload = checkLoaded;
-    script.onerror = () => {
-      if (!isProduction) {
-        console.error("❌ Failed to load html2pdf.js");
-      }
-    };
-    document.body.appendChild(script);
-
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
-
-  const handleDownloadPDF = (attempt = 1) => {
+  const handleDownloadPDF = () => {
     if (!printRef.current) {
-      alert("Printable content not found.");
+      toast.error("Printable content not found.");
       return;
     }
 
-    if (typeof window.html2pdf === "undefined") {
-      if (attempt < 4) {
-        if (!isProduction) {
-          console.warn(`🕐 Attempt ${attempt}: Waiting for html2pdf...`);
-        }
-        setTimeout(() => handleDownloadPDF(attempt + 1), 300);
-      } else {
-        alert("⚠️ PDF tool is not ready yet. Please try again in a few seconds.");
+    try {
+      toast.loading("Preparing PDF...", { id: "pdf-generation" });
+      
+      // Create a new window with the content
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        toast.error("Please allow popups to download PDF");
+        return;
       }
-      return;
-    }
 
-    // Proceed with PDF generation
-    setTimeout(() => {
-      window.html2pdf()
-        .set({
-          margin: 0.5,
-          filename: `${formData.orderId || "quotation"}.pdf`,
-          html2canvas: {
-            scale: 2,
-            useCORS: true,
-            allowTaint: false,
-            ignoreElements: (el: HTMLElement) =>
-              el.classList.contains("html2pdf__ignore"),
-          },
-          jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
-        })
-        .from(printRef.current)
-        .save();
-    }, 200);
+      // Get the content and perform careful cleanup
+      let content = printRef.current.innerHTML;
+      
+      // Remove all interactive elements (buttons, inputs, etc.) but preserve the data
+      content = content.replace(/<button[^>]*>.*?<\/button>/gi, '');
+      content = content.replace(/<input[^>]*value="([^"]*)"[^>]*>/gi, '$1'); // Replace inputs with their values
+      content = content.replace(/<select[^>]*>.*?<\/select>/gi, '');
+      content = content.replace(/<textarea[^>]*>.*?<\/textarea>/gi, '');
+      
+      // Remove interactive attributes but preserve styling
+      content = content.replace(/\s(onclick|onchange|oninput|onfocus|onblur|onmouseover|onmouseout)="[^"]*"/gi, '');
+      content = content.replace(/\s(role|tabindex|aria-[^=]*)=[^>\s]*/gi, '');
+      
+      // Replace problematic color functions in HTML content with proper colors
+      content = content.replace(/oklch\([^)]*\)/gi, '#891F1A'); // Use brand color instead of black
+      content = content.replace(/lab\([^)]*\)/gi, '#891F1A');
+      content = content.replace(/lch\([^)]*\)/gi, '#891F1A');
+      
+      // Add wrapper classes to ensure side-by-side layout
+      content = content.replace(
+        /<div class="grid grid-cols-3 gap-6 mt-4">/g,
+        '<div class="terms-totals-wrapper">'
+      );
+      
+      // Ensure the structure is correct for terms section
+      content = content.replace(
+        /<div class="col-span-2 border border-gray-400">/g,
+        '<div class="terms-section border border-gray-400">'
+      );
+      
+      // Wrap the totals section
+      content = content.replace(
+        /<div class="border border-gray-400">\s*<table class="w-full text-xs">/g,
+        '<div class="totals-section border border-gray-400"><table class="w-full text-xs financial-summary">'
+      );
+      
+      // Replace html2pdf__ignore with no-print
+      const cleanContent = content.replace(/html2pdf__ignore/g, 'no-print');
+      
+      // Get and clean stylesheets more carefully
+      let allStyles = '';
+      try {
+        allStyles = Array.from(document.styleSheets)
+          .map(sheet => {
+            try {
+              return Array.from(sheet.cssRules)
+                .map(rule => rule.cssText)
+                .join('');
+            } catch (e) {
+              console.warn("Could not read stylesheet:", e);
+              return '';
+            }
+          })
+          .join('');
+        
+        // Replace problematic color functions with proper brand colors
+        allStyles = allStyles.replace(/oklch\([^)]*\)/gi, '#891F1A');
+        allStyles = allStyles.replace(/lab\([^)]*\)/gi, '#891F1A');
+        allStyles = allStyles.replace(/lch\([^)]*\)/gi, '#891F1A');
+        
+        // Only remove problematic CSS rules, keep essential ones
+        allStyles = allStyles.replace(/@keyframes[^{]*\{[^}]*\}/gi, '');
+        
+      } catch (e) {
+        console.warn("Error processing stylesheets:", e);
+        allStyles = '';
+      }
+      
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Quotation - ${formData.orderId || formData.orderCode || 'Creative Connect'}</title>
+            <style>
+              /* Reset and base styles */
+              * { box-sizing: border-box; }
+              body { 
+                font-family: Arial, sans-serif; 
+                margin: 0; 
+                padding: 16px; 
+                color: #000; 
+                background: #fff;
+                font-size: 10px;
+                line-height: 1.2;
+              }
+              
+              /* Hide interactive elements */
+              .no-print, button, input, select, textarea { 
+                display: none !important; 
+              }
+              
+              /* Main container */
+              .quotation-container {
+                background: white;
+                padding: 12px;
+                border: 1px solid #d1d5db;
+                max-width: 100%;
+                margin: 0 auto;
+              }
+              
+              /* Header styles */
+              .text-center {
+                text-align: center;
+                margin-bottom: 8px;
+              }
+              .text-xl {
+                font-size: 16px;
+                font-weight: bold;
+                color: #891F1A;
+                text-transform: uppercase;
+                margin-bottom: 2px;
+              }
+              .text-xs {
+                font-size: 9px;
+                color: #374151;
+                margin-bottom: 2px;
+              }
+              .flex {
+                display: flex;
+              }
+              .justify-center {
+                justify-content: center;
+              }
+              .gap-6 {
+                gap: 12px;
+              }
+              .mt-1 {
+                margin-top: 2px;
+              }
+              
+              /* Grid layouts */
+              .grid {
+                display: grid !important;
+              }
+              .grid-cols-2 {
+                grid-template-columns: 1fr 1fr !important;
+              }
+              .grid-cols-3 {
+                display: grid !important;
+                grid-template-columns: 2fr 1fr !important;
+                gap: 12px !important;
+              }
+              .gap-6 {
+                gap: 12px !important;
+              }
+              .mt-6 {
+                margin-top: 12px;
+              }
+              .mt-4 {
+                margin-top: 8px;
+              }
+              .col-span-2 {
+                grid-column: span 2 !important;
+              }
+              
+              /* Enhanced Grid Layout for Terms & Totals */
+              .terms-totals-wrapper {
+                display: grid !important;
+                grid-template-columns: 2fr 1fr !important;
+                gap: 12px !important;
+                width: 100% !important;
+                margin-top: 8px !important;
+              }
+              
+              .terms-section {
+                grid-column: 1 !important;
+                width: 100% !important;
+              }
+              
+              .totals-section {
+                grid-column: 2 !important;
+                width: 100% !important;
+              }
+              
+              /* Force grid layout for the specific container */
+              .grid.grid-cols-3 {
+                display: grid !important;
+                grid-template-columns: 2fr 1fr !important;
+                gap: 12px !important;
+                width: 100% !important;
+              }
+              
+              /* Ensure no flexbox interference */
+              .flex {
+                display: block !important;
+              }
+              
+              /* Force side-by-side layout in all contexts */
+              .terms-totals-container {
+                display: grid !important;
+                grid-template-columns: 2fr 1fr !important;
+                gap: 12px !important;
+                margin-top: 8px;
+              }
+              
+              /* Force side-by-side layout in print */
+              @media print {
+                .terms-totals-wrapper {
+                  display: grid !important;
+                  grid-template-columns: 2fr 1fr !important;
+                  gap: 12px !important;
+                  page-break-inside: avoid !important;
+                }
+                
+                .terms-section {
+                  grid-column: 1 !important;
+                  width: 100% !important;
+                }
+                
+                .totals-section {
+                  grid-column: 2 !important;
+                  width: 100% !important;
+                }
+                
+                .grid.grid-cols-3 {
+                  display: grid !important;
+                  grid-template-columns: 2fr 1fr !important;
+                  gap: 12px !important;
+                }
+                
+                .terms-totals-container {
+                  display: grid !important;
+                  grid-template-columns: 2fr 1fr !important;
+                  gap: 12px !important;
+                  page-break-inside: avoid;
+                }
+                
+                /* Prevent any layout breaking */
+                .col-span-2 {
+                  grid-column: 1 !important;
+                }
+              }
+              
+              /* Section styles */
+              .border {
+                border: 1px solid #d1d5db;
+              }
+              .border-gray-300 {
+                border-color: #d1d5db;
+              }
+              .border-gray-400 {
+                border-color: #9ca3af;
+              }
+              .bg-\\[\\#891F1A\\] {
+                background-color: #891F1A;
+              }
+              .text-white {
+                color: white;
+              }
+              .px-4 {
+                padding-left: 8px;
+                padding-right: 8px;
+              }
+              .py-1 {
+                padding-top: 2px;
+                padding-bottom: 2px;
+              }
+              .font-bold {
+                font-weight: bold;
+              }
+              .text-sm {
+                font-size: 10px;
+              }
+              .p-3 {
+                padding: 6px;
+              }
+              .space-y-1 > * + * {
+                margin-top: 2px;
+              }
+              .text-xs {
+                font-size: 9px;
+              }
+              
+              /* Table styles */
+              table {
+                border-collapse: collapse;
+                width: 100%;
+                margin: 8px 0;
+                font-size: 9px;
+                background: white;
+              }
+              th, td {
+                border: 1px solid #9ca3af;
+                padding: 4px;
+                text-align: left;
+                background: white;
+                color: #000;
+              }
+              th {
+                background-color: #891F1A !important;
+                color: white !important;
+                font-weight: bold;
+              }
+              td {
+                background-color: white !important;
+                color: #000 !important;
+              }
+              .text-center {
+                text-align: center;
+              }
+              .text-right {
+                text-align: right;
+              }
+              .bg-gray-50 {
+                background-color: #f9fafb !important;
+              }
+              
+              /* Ensure no black overlays - override any problematic styles */
+              td {
+                background-color: white !important;
+                color: #000 !important;
+              }
+              th {
+                background-color: #891F1A !important;
+                color: white !important;
+              }
+              .bg-gray-50 {
+                background-color: #f9fafb !important;
+              }
+              
+              /* Totals table */
+              .w-full {
+                width: 100%;
+              }
+              .px-3 {
+                padding-left: 6px;
+                padding-right: 6px;
+              }
+              .py-1 {
+                padding-top: 2px;
+                padding-bottom: 2px;
+              }
+              .font-medium {
+                font-weight: 500;
+              }
+              .border-b {
+                border-bottom: 1px solid #d1d5db;
+              }
+              .border-gray-300 {
+                border-color: #d1d5af;
+              }
+              .font-semibold {
+                font-weight: 600;
+              }
+              
+              /* Financial summary table - clean single border */
+              .financial-summary {
+                width: 100%;
+                border-collapse: collapse;
+                border-top: 1px solid #000;
+                border-left: 1px solid #000;
+                border-right: 1px solid #000;
+                border-bottom: 1px solid #000;
+                background: white;
+                font-size: 9px;
+              }
+              
+              /* All table cells with consistent styling */
+              .financial-summary td {
+                padding: 4px 8px;
+                border-top: 1px solid #000;
+                border-left: 1px solid #000;
+                border-bottom: 1px solid #000;
+                border-right: 1px solid #000;
+                font-size: 9px;
+                background: white !important;
+                color: #000 !important;
+                vertical-align: middle;
+              }
+              
+              /* Remove right border from last column */
+              .financial-summary td:last-child {
+                border-right: none;
+              }
+              
+              /* First column - labels */
+              .financial-summary td:first-child {
+                text-align: left;
+                font-weight: normal;
+                width: 60%;
+              }
+              
+              /* Second column - values */
+              .financial-summary td:last-child {
+                text-align: right;
+                font-weight: normal;
+                width: 40%;
+              }
+              
+              /* Total row - special styling */
+              .financial-summary .total-row td {
+                background-color: #891F1A !important;
+                color: white !important;
+                font-weight: bold;
+                border-top: 1px solid #000;
+                border-left: 1px solid #000;
+                border-bottom: 1px solid #000;
+                border-right: 1px solid #000;
+              }
+              
+              /* Remove right border from last column in total row */
+              .financial-summary .total-row td:last-child {
+                border-right: none;
+              }
+              
+              /* Remaining row - bold text */
+              .financial-summary .remaining-row td {
+                font-weight: bold;
+                background: white !important;
+                color: #000 !important;
+                border-top: 1px solid #000;
+                border-left: 1px solid #000;
+                border-bottom: none;
+                border-right: 1px solid #000;
+              }
+              
+              /* Remove right border from last column in remaining row */
+              .financial-summary .remaining-row td:last-child {
+                border-right: none;
+              }
+              
+              /* Remove border from last row */
+              .financial-summary tr:last-child td {
+                border-bottom: none;
+              }
+              
+              /* Ensure all rows have consistent background */
+              .financial-summary tr {
+                background: white !important;
+              }
+              
+              /* Override for total row */
+              .financial-summary tr.total-row {
+                background: #891F1A !important;
+              }
+              
+              /* Ensure no visual separation between rows */
+              .financial-summary tr:not(.total-row):not(.remaining-row) {
+                background: white !important;
+              }
+              
+              /* Consistent font styling */
+              .financial-summary .font-medium {
+                font-weight: 500 !important;
+              }
+              .financial-summary .font-bold {
+                font-weight: bold !important;
+              }
+              .financial-summary .font-semibold {
+                font-weight: 600 !important;
+              }
+              
+              /* Remove container border to prevent double border */
+              .totals-section {
+                border: none !important;
+                background: transparent !important;
+                padding: 0 !important;
+              }
+              
+              /* Terms section */
+              .leading-relaxed {
+                line-height: 1.3;
+              }
+              .uppercase {
+                text-transform: uppercase;
+              }
+              
+              /* Print styles */
+              @media print {
+                body { 
+                  margin: 0; 
+                  padding: 8px;
+                  font-size: 9px;
+                }
+                .no-print, button, input, select, textarea { 
+                  display: none !important; 
+                }
+                .quotation-container {
+                  padding: 8px;
+                  border: none;
+                  max-width: none;
+                }
+                
+                /* Ensure grid layouts work in print */
+                .grid-cols-3 {
+                  display: grid !important;
+                  grid-template-columns: 2fr 1fr !important;
+                  gap: 12px !important;
+                }
+                
+                /* Prevent page breaks within sections */
+                .border {
+                  page-break-inside: avoid;
+                }
+                
+                /* Force side-by-side layout in print */
+                .terms-totals-wrapper {
+                  display: grid !important;
+                  grid-template-columns: 2fr 1fr !important;
+                  gap: 12px !important;
+                  page-break-inside: avoid !important;
+                }
+                
+                .terms-section {
+                  grid-column: 1 !important;
+                  width: 100% !important;
+                }
+                
+                .totals-section {
+                  grid-column: 2 !important;
+                  width: 100% !important;
+                }
+                
+                @page { 
+                  margin: 0.25in; 
+                  size: A4;
+                }
+              }
+              
+              /* Additional styles from the original component */
+              ${allStyles}
+            </style>
+          </head>
+          <body>
+            <div class="quotation-container">
+              ${cleanContent}
+            </div>
+            <script>
+              window.onload = function() {
+                setTimeout(function() {
+                  window.print();
+                  window.onafterprint = function() {
+                    window.close();
+                  };
+                }, 500);
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      
+      printWindow.document.close();
+      toast.success("PDF print dialog opened! Use 'Save as PDF' in the print dialog.", { id: "pdf-generation" });
+      
+    } catch (error) {
+      console.error("Print failed:", error);
+      toast.error("Failed to open print dialog. Please try again.", { id: "pdf-generation" });
+    }
   };
 
   const handleShare = () => {
-    const shareData = {
-      title: "Quotation from Creative Connect",
-      text: "Check out this quotation preview from Creative Connect Advertising.",
-      url: window.location.href,
-    };
-
-    if (navigator.share) {
-      navigator
-        .share(shareData)
-        .catch((err) => {
-          if (!isProduction) {
-            console.error("Share failed:", err);
-          }
-        });
-    } else {
-      alert("Sharing not supported. Please copy the URL manually.");
-    }
+    const currentUrl = window.location.href;
+    const shareText = `Check out this quotation from Creative Connect: ${currentUrl}`;
+    
+    setShowShareModal(true);
+    setPdfBlob(null); // No PDF, just URL sharing
   };
 
   // Parse cost fields
@@ -310,6 +793,30 @@ export default function QuotationPreview({
     }
   };
 
+  const handlePlatformShare = (platform: string) => {
+    const currentUrl = window.location.href;
+    const shareText = `Check out this quotation from Creative Connect: ${currentUrl}`;
+    
+    const shareUrls = {
+      whatsapp: `https://wa.me/?text=${encodeURIComponent(shareText)}`,
+      telegram: `https://t.me/share/url?url=${encodeURIComponent(currentUrl)}&text=Quotation from Creative Connect`,
+      email: `mailto:?subject=Quotation from Creative Connect&body=Please check this quotation: ${encodeURIComponent(currentUrl)}`,
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(currentUrl)}`,
+      twitter: `https://twitter.com/intent/tweet?text=Check out this quotation from Creative Connect&url=${encodeURIComponent(currentUrl)}`,
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`
+    };
+    
+    if (platform === 'download') {
+      // Use the print approach for download
+      handleDownloadPDF();
+      return;
+    }
+    
+    window.open(shareUrls[platform], '_blank');
+    toast.success(`Opening ${platform}...`);
+    setShowShareModal(false);
+  };
+
   return (
     <>
       {/* Product Search Modal */}
@@ -341,39 +848,88 @@ export default function QuotationPreview({
         }}
       />
 
-      {/* Edit Modal */}
-      {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 html2pdf__ignore border-0">
-          <div className="bg-white p-6 rounded-md max-w-md w-full">
-            <h2 className="text-lg font-bold mb-3">Request Edits</h2>
-            <textarea
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-              rows={4}
-              placeholder="Enter your feedback or corrections here..."
-              value={editNotes}
-              onChange={(e) => setEditNotes(e.target.value)}
-            />
-            <div className="mt-4 flex justify-end gap-3">
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 backdrop-blur-overlay flex items-center justify-center z-50 html2pdf__ignore">
+          <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4 shadow-xl">
+            <h3 className="text-lg font-semibold mb-4 text-[#891F1A]">Share Quotation</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Choose a platform to share this quotation page:
+            </p>
+            
+            <div className="grid grid-cols-2 gap-3">
               <button
-                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-                onClick={() => setShowEditModal(false)}
+                onClick={() => handlePlatformShare('whatsapp')}
+                disabled={uploading}
+                className="flex items-center gap-2 p-3 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 transition-colors"
+              >
+                📱 WhatsApp
+              </button>
+              <button
+                onClick={() => handlePlatformShare('telegram')}
+                disabled={uploading}
+                className="flex items-center gap-2 p-3 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 transition-colors"
+              >
+                ✈️ Telegram
+              </button>
+              <button
+                onClick={() => handlePlatformShare('email')}
+                disabled={uploading}
+                className="flex items-center gap-2 p-3 bg-gray-500 text-white rounded hover:bg-gray-600 disabled:opacity-50 transition-colors"
+              >
+                📧 Email
+              </button>
+              <button
+                onClick={() => handlePlatformShare('linkedin')}
+                disabled={uploading}
+                className="flex items-center gap-2 p-3 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                💼 LinkedIn
+              </button>
+              <button
+                onClick={() => handlePlatformShare('twitter')}
+                disabled={uploading}
+                className="flex items-center gap-2 p-3 bg-sky-500 text-white rounded hover:bg-sky-600 disabled:opacity-50 transition-colors"
+              >
+                🐦 Twitter
+              </button>
+              <button
+                onClick={() => handlePlatformShare('facebook')}
+                disabled={uploading}
+                className="flex items-center gap-2 p-3 bg-blue-700 text-white rounded hover:bg-blue-800 disabled:opacity-50 transition-colors"
+              >
+                📘 Facebook
+              </button>
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <button
+                onClick={() => handlePlatformShare('download')}
+                disabled={uploading}
+                className="w-full flex items-center justify-center gap-2 p-3 bg-[#891F1A] text-white rounded hover:bg-[#6e1714] disabled:opacity-50 transition-colors"
+              >
+                📥 Print/Save as PDF
+              </button>
+            </div>
+            
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                disabled={uploading}
               >
                 Cancel
               </button>
-              <button
-                className="px-4 py-2 bg-[#891F1A] text-white rounded hover:bg-[#6e1714]"
-                onClick={() => {
-                  if (!isProduction) {
-                    console.log("Edit requested:", editNotes);
-                  }
-                  alert("Edit request submitted!");
-                  setShowEditModal(false);
-                  setEditNotes("");
-                }}
-              >
-                Submit Request
-              </button>
             </div>
+            
+            {uploading && (
+              <div className="mt-4 text-center">
+                <div className="inline-flex items-center gap-2 text-sm text-gray-600">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#891F1A]"></div>
+                  Preparing PDF...
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -597,14 +1153,7 @@ export default function QuotationPreview({
             className="bg-gray-800 hover:bg-black text-white px-4 py-2 rounded shadow transition"
             onClick={() => handleDownloadPDF()}
           >
-            Download PDF Preview
-          </button>
-
-          <button
-            className="bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded shadow transition"
-            onClick={() => setShowEditModal(true)}
-          >
-            Request Edits
+            Print/Save as PDF
           </button>
         </div>
       </div>

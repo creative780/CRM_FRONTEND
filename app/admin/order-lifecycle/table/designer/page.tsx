@@ -10,6 +10,7 @@ import { toast } from "react-hot-toast";
 import { Trash2, CheckCircle, XCircle, Clock, FileText, User, Calendar, Upload, Send, Package, Eye } from "lucide-react";
 import DesignFilePreview from '@/app/components/DesignFilePreview';
 import { requestDesignApproval, sendToProduction, uploadOrderFile, getOrderFiles } from "@/lib/workflowApi";
+import UploadProgressBar from "@/app/components/UploadProgressBar";
 
 /* ===== Types ===== */
 type Urgency = "Urgent" | "High" | "Normal" | "Low";
@@ -69,6 +70,13 @@ export default function DesignerView() {
   const [isDesignApproved, setIsDesignApproved] = useState(false);
   const [isDesignRejected, setIsDesignRejected] = useState(false);
   const [approvalStatus, setApprovalStatus] = useState<string | null>(null);
+
+  // Upload progress bar states
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploadComplete, setIsUploadComplete] = useState(false);
+  const [showUploadProgress, setShowUploadProgress] = useState(false);
+  const [currentUploadFileName, setCurrentUploadFileName] = useState('');
+  const [currentUploadFileSize, setCurrentUploadFileSize] = useState(0);
 
   // Enhanced debugging function for approval status
   const debugApprovalStatus = () => {
@@ -347,8 +355,17 @@ export default function DesignerView() {
       // Upload files first
       console.log('📤 Uploading files...');
       const uploadedFileUrls = [];
-      for (const file of uploadedFiles) {
+      for (let i = 0; i < uploadedFiles.length; i++) {
+        const file = uploadedFiles[i];
         console.log('📂 Uploading file:', file.name);
+        
+        // Show progress bar for this file
+        setCurrentUploadFileName(file.name);
+        setCurrentUploadFileSize(file.size);
+        setUploadProgress(0);
+        setIsUploadComplete(false);
+        setShowUploadProgress(true);
+        
         const response = await uploadOrderFile(
           selected.id,
           file,
@@ -356,8 +373,16 @@ export default function DesignerView() {
           'design',
           `Design file: ${file.name}`,
           undefined,
-          ['admin', 'sales', 'designer']
+          ['admin', 'sales', 'designer'],
+          (progress) => {
+            setUploadProgress(progress);
+          }
         );
+        
+        // Mark as complete
+        setUploadProgress(100);
+        setIsUploadComplete(true);
+        
         console.log('✅ File uploaded successfully:', response);
         uploadedFileUrls.push({
           name: file.name,
@@ -365,7 +390,13 @@ export default function DesignerView() {
           size: file.size,
           type: file.type
         });
+        
+        // Wait a bit before uploading next file to show completion
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
+      
+      // Hide progress bar after all uploads complete
+      setShowUploadProgress(false);
 
       console.log('✨ Files uploaded successfully:', uploadedFileUrls);
 
@@ -1215,7 +1246,10 @@ export default function DesignerView() {
                             <h4 className="font-medium text-gray-700">Uploaded Files:</h4>
                             {uploadedFiles.map((file, index) => (
                               <div key={index} className="flex items-center justify-between bg-white rounded-lg p-2">
-                                <span className="text-sm text-gray-600">{file.name}</span>
+                                <div className="flex flex-col">
+                                  <span className="text-sm text-gray-600">{file.name}</span>
+                                  <span className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB</span>
+                                </div>
                                 <button
                                   onClick={() => removeFile(index)}
                                   className="text-red-500 hover:text-red-700"
@@ -1343,6 +1377,14 @@ export default function DesignerView() {
           )}
         </Dialog>
       </Transition>
+
+      <UploadProgressBar
+        progress={uploadProgress}
+        isComplete={isUploadComplete}
+        fileName={currentUploadFileName}
+        fileSize={currentUploadFileSize}
+        show={showUploadProgress}
+      />
     </div>
   );
 }

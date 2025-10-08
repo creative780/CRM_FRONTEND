@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import UploadProgressBar from "@/app/components/UploadProgressBar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -269,6 +270,13 @@ export default function EmployeeManagementPage() {
     username: "",
     password: "",
   });
+
+  // Upload progress bar states
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploadComplete, setIsUploadComplete] = useState(false);
+  const [showUploadProgress, setShowUploadProgress] = useState(false);
+  const [currentUploadFileName, setCurrentUploadFileName] = useState('');
+  const [currentUploadFileSize, setCurrentUploadFileSize] = useState(0);
 
   // Load employees from localStorage on component mount
   useEffect(() => {
@@ -553,9 +561,32 @@ export default function EmployeeManagementPage() {
                         id="image-upload"
                         type="file"
                         accept="image/*"
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (file) {
+                            // Show progress bar for this file
+                            setCurrentUploadFileName(file.name);
+                            setCurrentUploadFileSize(file.size);
+                            setUploadProgress(0);
+                            setIsUploadComplete(false);
+                            setShowUploadProgress(true);
+                            
+                            // Simulate upload progress (since these are local files, we'll just show a quick progress)
+                            for (let progress = 0; progress <= 100; progress += 20) {
+                              setUploadProgress(progress);
+                              await new Promise(resolve => setTimeout(resolve, 100));
+                            }
+                            
+                            // Mark as complete
+                            setUploadProgress(100);
+                            setIsUploadComplete(true);
+                            
+                            // Wait a moment to show completion
+                            await new Promise(resolve => setTimeout(resolve, 800));
+                            
+                            // Hide progress bar after processing
+                            setShowUploadProgress(false);
+                            
                             const reader = new FileReader();
                             reader.onload = (event) => {
                               setNewEmployee({
@@ -897,6 +928,14 @@ export default function EmployeeManagementPage() {
           </DialogContent>
         </Dialog>
         <Toaster position="top-center" />
+        
+        <UploadProgressBar
+          progress={uploadProgress}
+          isComplete={isUploadComplete}
+          fileName={currentUploadFileName}
+          fileSize={currentUploadFileSize}
+          show={showUploadProgress}
+        />
       </div>
     </div>
   );

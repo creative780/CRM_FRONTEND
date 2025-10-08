@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "../Button";
 import { Card } from "../Card";
 import { Separator } from "../Separator";
 import { saveFileMetaToStorage, loadFileMetaFromStorage, clearFilesFromStorage } from "@/app/lib/fileStorage";
+import UploadProgressBar from "../UploadProgressBar";
 
 interface Props {
   formData: any;
@@ -27,6 +28,13 @@ export default function DeliveryProcessForm({
   handleUpload,
   canGenerate,
 }: Props) {
+  
+  // Upload progress bar states
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploadComplete, setIsUploadComplete] = useState(false);
+  const [showUploadProgress, setShowUploadProgress] = useState(false);
+  const [currentUploadFileName, setCurrentUploadFileName] = useState('');
+  const [currentUploadFileSize, setCurrentUploadFileSize] = useState(0);
   // Load rider photo from localStorage on component mount
   useEffect(() => {
     console.log('DeliveryProcessForm: Loading rider photo from localStorage');
@@ -111,7 +119,34 @@ export default function DeliveryProcessForm({
         <label className="text-sm font-medium text-gray-700">Rider Photo</label>
         <input
           type="file"
-          onChange={(e) => setRiderPhoto(e.target.files ? e.target.files[0] : null)}
+          onChange={async (e) => {
+            const file = e.target.files ? e.target.files[0] : null;
+            if (file) {
+              // Show progress bar for this file
+              setCurrentUploadFileName(file.name);
+              setCurrentUploadFileSize(file.size);
+              setUploadProgress(0);
+              setIsUploadComplete(false);
+              setShowUploadProgress(true);
+              
+              // Simulate upload progress (since these are local files, we'll just show a quick progress)
+              for (let progress = 0; progress <= 100; progress += 20) {
+                setUploadProgress(progress);
+                await new Promise(resolve => setTimeout(resolve, 100));
+              }
+              
+              // Mark as complete
+              setUploadProgress(100);
+              setIsUploadComplete(true);
+              
+              // Wait a moment to show completion
+              await new Promise(resolve => setTimeout(resolve, 800));
+              
+              // Hide progress bar after processing
+              setShowUploadProgress(false);
+            }
+            setRiderPhoto(file);
+          }}
           className="w-full"
         />
         {riderPhoto && (
@@ -133,6 +168,14 @@ export default function DeliveryProcessForm({
           <option>Delivered</option>
         </select>
       </div>
+
+      <UploadProgressBar
+        progress={uploadProgress}
+        isComplete={isUploadComplete}
+        fileName={currentUploadFileName}
+        fileSize={currentUploadFileSize}
+        show={showUploadProgress}
+      />
     </Card>
   );
 }

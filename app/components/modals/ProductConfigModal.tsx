@@ -463,12 +463,14 @@ export default function ProductConfigModal({
                     Quantity
                   </label>
                   <input
-                    type="text"
+                    type="number"
+                    min="1"
+                    step="1"
                     placeholder="Qty"
                     value={quantity}
                     onChange={(e) => {
                       const value = e.target.value;
-                      // Only allow digits
+                      // Only allow positive integers
                       const numericValue = value.replace(/\D/g, '');
                       setQuantity(numericValue);
                     }}

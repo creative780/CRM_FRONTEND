@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useRef, useState } from "react";
+import UploadProgressBar from "../UploadProgressBar";
 
 const DEFAULT_ACCEPT = [
   ".pdf", ".png", ".jpg", ".jpeg", ".svg", ".ai", ".psd", ".doc", ".docx"
@@ -32,9 +33,16 @@ export default function DesignUploadSection({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setDragging] = useState(false);
+  
+  // Upload progress bar states
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploadComplete, setIsUploadComplete] = useState(false);
+  const [showUploadProgress, setShowUploadProgress] = useState(false);
+  const [currentUploadFileName, setCurrentUploadFileName] = useState('');
+  const [currentUploadFileSize, setCurrentUploadFileSize] = useState(0);
 
   const handleFiles = useCallback(
-    (files: FileList | null) => {
+    async (files: FileList | null) => {
       if (!files || files.length === 0) return;
       const arr = Array.from(files);
 
@@ -49,6 +57,34 @@ export default function DesignUploadSection({
         return;
       }
       setError(null);
+
+      // Process files with progress bar
+      for (let i = 0; i < arr.length; i++) {
+        const file = arr[i];
+        
+        // Show progress bar for this file
+        setCurrentUploadFileName(file.name);
+        setCurrentUploadFileSize(file.size);
+        setUploadProgress(0);
+        setIsUploadComplete(false);
+        setShowUploadProgress(true);
+        
+        // Simulate upload progress (since these are local files, we'll just show a quick progress)
+        for (let progress = 0; progress <= 100; progress += 20) {
+          setUploadProgress(progress);
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        // Mark as complete
+        setUploadProgress(100);
+        setIsUploadComplete(true);
+        
+        // Wait a moment to show completion
+        await new Promise(resolve => setTimeout(resolve, 800));
+      }
+      
+      // Hide progress bar after all files processed
+      setShowUploadProgress(false);
       onChange?.([...(value || []), ...arr]);
     },
     [accept, onChange, value]
@@ -119,7 +155,10 @@ export default function DesignUploadSection({
         <ul className="text-sm text-gray-800 bg-gray-50 rounded-lg p-3">
           {value.map((f, i) => (
             <li key={i} className="flex items-center justify-between py-1">
-              <span className="truncate">{f.name}</span>
+              <div className="flex flex-col">
+                <span className="truncate">{f.name}</span>
+                <span className="text-xs text-gray-500">{(f.size / 1024).toFixed(1)} KB</span>
+              </div>
               <button
                 type="button"
                 className="text-xs underline text-gray-600 hover:text-gray-900"
@@ -170,6 +209,14 @@ export default function DesignUploadSection({
           />
         </div>
       )}
+
+      <UploadProgressBar
+        progress={uploadProgress}
+        isComplete={isUploadComplete}
+        fileName={currentUploadFileName}
+        fileSize={currentUploadFileSize}
+        show={showUploadProgress}
+      />
     </div>
   );
 }

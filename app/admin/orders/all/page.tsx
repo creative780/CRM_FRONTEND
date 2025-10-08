@@ -858,7 +858,7 @@ export default function Page() {
                     }`}
                   >
                     <span>{selectedOrder.status}</span>
-                    <span className="text-sm ml-2">â–¼</span>
+                    <ChevronDown className="w-4 h-4 ml-2" />
                   </button>
 
                   {showStatusDropdown && (

@@ -21,6 +21,7 @@ import DesignProductionForm from "../../components/order-stages/DesignProduction
 import PrintingQAForm from "../../components/order-stages/PrintingQAForm";
 import ClientApprovalForm from "../../components/order-stages/ClientApprovalForm";
 import DeliveryProcessForm from "../../components/order-stages/DeliveryProcessForm";
+import UploadProgressBar from "@/app/components/UploadProgressBar";
 
 /* ────────────────────────────────────────────────────────────────────────────
    RBAC (role still used for badge and table route, but NOT for tab visibility)
@@ -212,6 +213,13 @@ export default function OrderLifecyclePage() {
   const [deliveryCode, setDeliveryCode] = useState("");
   const [riderPhoto, setRiderPhoto] = useState<File | null>(null);
   const canGenerate = deliveryCode === "";
+
+  // Upload progress bar states
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploadComplete, setIsUploadComplete] = useState(false);
+  const [showUploadProgress, setShowUploadProgress] = useState(false);
+  const [currentUploadFileName, setCurrentUploadFileName] = useState('');
+  const [currentUploadFileSize, setCurrentUploadFileSize] = useState(0);
 
   useEffect(() => {
     setCurrentIndex((i) => Math.min(i, Math.max(visibleStageKeys.length - 1, 0)));
@@ -526,42 +534,87 @@ export default function OrderLifecyclePage() {
       toast.error("No photo selected");
       return;
     }
-    try {
-      const apiBase = getApiBaseUrl();
-      const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
-      const form = new FormData();
-      form.append("photo", riderPhoto);
-      form.append("orderId", formData._orderId.toString()); // Ensure it's a string
-      
-      console.log('Uploading rider photo:', {
-        orderId: formData._orderId,
-        photoName: riderPhoto.name,
-        photoSize: riderPhoto.size,
-        photoType: riderPhoto.type
+
+    const apiBase = getApiBaseUrl();
+    const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
+    const form = new FormData();
+    form.append("photo", riderPhoto);
+    form.append("orderId", formData._orderId.toString());
+    
+    console.log('Uploading rider photo:', {
+      orderId: formData._orderId,
+      photoName: riderPhoto.name,
+      photoSize: riderPhoto.size,
+      photoType: riderPhoto.type
+    });
+
+    // Show progress bar
+    setCurrentUploadFileName(riderPhoto.name);
+    setCurrentUploadFileSize(riderPhoto.size);
+    setUploadProgress(0);
+    setIsUploadComplete(false);
+    setShowUploadProgress(true);
+
+    return new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      // Track upload progress
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const percentComplete = (e.loaded / e.total) * 100;
+          setUploadProgress(percentComplete);
+        }
       });
-      
-      const resp = await fetch(`${apiBase}/api/delivery/rider-photo`, {
-        method: "POST",
-        body: form,
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            console.log('Upload successful:', data);
+            
+            // Mark as complete
+            setUploadProgress(100);
+            setIsUploadComplete(true);
+            
+            setFormData((p: any) => ({ ...p, riderPhotoPath: data.url }));
+            toast.success("Photo uploaded successfully!");
+            
+            // Hide progress bar after 2 seconds
+            setTimeout(() => {
+              setShowUploadProgress(false);
+              setUploadProgress(0);
+              setIsUploadComplete(false);
+            }, 2000);
+            
+            resolve();
+          } catch (error) {
+            console.error('Failed to parse response:', error);
+            toast.error("Photo upload failed");
+            setShowUploadProgress(false);
+            reject(error);
+          }
+        } else {
+          console.error('Upload failed:', xhr.status, xhr.responseText);
+          toast.error(`Photo upload failed (${xhr.status})`);
+          setShowUploadProgress(false);
+          reject(new Error(`Upload failed with status ${xhr.status}`));
+        }
       });
-      
-      if (!resp.ok) {
-        const errorText = await resp.text();
-        console.error('Upload failed:', resp.status, errorText);
-        throw new Error(`Upload failed (${resp.status}): ${errorText}`);
+
+      xhr.addEventListener('error', () => {
+        console.error("Photo upload error: Network error");
+        toast.error("Photo upload failed");
+        setShowUploadProgress(false);
+        reject(new Error('Network error'));
+      });
+
+      xhr.open('POST', `${apiBase}/api/delivery/rider-photo`);
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
       }
-      
-      const data = await resp.json();
-      console.log('Upload successful:', data);
-      setFormData((p: any) => ({ ...p, riderPhotoPath: data.url }));
-      toast.success("Photo uploaded successfully!");
-    } catch (e) {
-      console.error("Photo upload error:", e);
-      toast.error("Photo upload failed");
-    }
+
+      xhr.send(form);
+    });
   };
 
   const handleMarkPrinted = async () => {
@@ -1732,6 +1785,14 @@ export default function OrderLifecyclePage() {
         initialPrice={pendingInitialPrice || 0}
         editingProductId={editingProductId ?? undefined}
         onBack={handleBackToSearch}
+      />
+
+      <UploadProgressBar
+        progress={uploadProgress}
+        isComplete={isUploadComplete}
+        fileName={currentUploadFileName}
+        fileSize={currentUploadFileSize}
+        show={showUploadProgress}
       />
     </div>
   );
