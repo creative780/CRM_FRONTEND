@@ -797,7 +797,7 @@ export default function QuotationPreview({
     const currentUrl = window.location.href;
     const shareText = `Check out this quotation from Creative Connect: ${currentUrl}`;
     
-    const shareUrls = {
+    const shareUrls: Record<string, string> = {
       whatsapp: `https://wa.me/?text=${encodeURIComponent(shareText)}`,
       telegram: `https://t.me/share/url?url=${encodeURIComponent(currentUrl)}&text=Quotation from Creative Connect`,
       email: `mailto:?subject=Quotation from Creative Connect&body=Please check this quotation: ${encodeURIComponent(currentUrl)}`,
