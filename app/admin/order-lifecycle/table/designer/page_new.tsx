@@ -7,6 +7,7 @@ import { Button } from "@/app/components/Button";
 import { toast, Toaster } from "react-hot-toast";
 import { ordersApi, Order } from "@/lib/orders-api";
 import { requestDesignApproval, sendToProduction, uploadOrderFile, getOrderFiles } from "@/lib/workflowApi";
+import DesignFilePreviewModal from '@/app/components/modals/DesignFilePreviewModal';
 import { CheckCircle, Send, Upload, FileText, Package, X, AlertCircle } from "lucide-react";
 import UploadProgressBar from "@/app/components/UploadProgressBar";
 
@@ -86,6 +87,10 @@ export default function DesignerOrdersTablePage() {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [requestingApproval, setRequestingApproval] = useState(false);
   const [sendingToProduction, setSendingToProduction] = useState(false);
+  
+  // Design file preview state
+  const [showDesignPreview, setShowDesignPreview] = useState(false);
+  const [previewFiles, setPreviewFiles] = useState<Array<{file_id: number, file_name: string, file_size: number, mime_type: string}>>([]);
 
   // Upload progress bar states
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -103,14 +108,33 @@ export default function DesignerOrdersTablePage() {
       setError(null);
       const apiOrders = await ordersApi.getOrders();
       
-      // Filter orders for designer
-      const designerOrders = apiOrders.filter((order: Order) => 
-        order.stage === 'design' || 
-        order.assigned_designer === currentUsername ||
-        order.status === 'sent_to_designer' ||
-        order.status === 'sent_for_approval' ||
-        order.status === 'sent_to_production'
-      );
+      // Filter orders for designer - only show orders explicitly sent to designer
+      console.log('🔍 Designer view - All orders:', apiOrders.length);
+      console.log('🔍 Current username:', currentUsername);
+      
+      const designerOrders = apiOrders.filter((order: Order) => {
+        // Show orders that have been explicitly assigned to this designer
+        if (order.assigned_designer === currentUsername) {
+          console.log('✅ Order assigned to designer:', order.order_code, order.status);
+          return true;
+        }
+        
+        // Show orders with status indicating they're in designer workflow
+        if (order.status === 'sent_to_designer') {
+          console.log('✅ Order sent to designer:', order.order_code, order.status);
+          return true;
+        }
+        if (order.status === 'sent_for_approval') {
+          console.log('✅ Order sent for approval:', order.order_code, order.status);
+          return true;
+        }
+        
+        // Don't show orders just because stage is 'design' - they must be explicitly sent
+        return false;
+      });
+      
+      console.log('🔍 Filtered designer orders:', designerOrders.length);
+      console.log('🔍 Designer orders:', designerOrders.map(o => ({ code: o.order_code, status: o.status, assigned: o.assigned_designer })));
       
       const convertedOrders = designerOrders.map(mapOrderToRow);
       setOrders(convertedOrders);
@@ -139,6 +163,39 @@ export default function DesignerOrdersTablePage() {
       })));
     } catch (error) {
       console.error('Failed to load files:', error);
+    }
+  };
+
+  // Handle design file preview
+  const handleDesignFilePreview = async () => {
+    if (!selected) return;
+    
+    try {
+      console.log('🔍 Loading design files for preview...');
+      
+      // Load files from backend using getOrderFiles
+      const backendFiles = await getOrderFiles(selected.id);
+      console.log('📁 Backend files loaded:', backendFiles);
+      
+      // Filter for design files
+      const designFiles = backendFiles.filter(f => f.file_type === 'design' || f.file_type === 'final');
+      console.log('🎨 Design files found:', designFiles);
+      
+      // Transform to match DesignFilePreviewModal interface
+      const transformedFiles = designFiles.map(file => ({
+        file_id: file.id,
+        file_name: file.file_name,
+        file_size: file.file_size,
+        mime_type: file.mime_type,
+        url: file.file_url
+      }));
+      
+      console.log('✅ Transformed files for preview:', transformedFiles);
+      setPreviewFiles(transformedFiles);
+      setShowDesignPreview(true);
+    } catch (error) {
+      console.error('❌ Failed to load design files:', error);
+      toast.error('Failed to load design files for preview');
     }
   };
 
@@ -569,7 +626,16 @@ export default function DesignerOrdersTablePage() {
                       {/* Uploaded Files */}
                       {uploadedFiles.length > 0 && (
                         <div className="mt-4 space-y-2">
-                          <p className="text-sm font-medium text-gray-700">Uploaded Files ({uploadedFiles.length}):</p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium text-gray-700">Uploaded Files ({uploadedFiles.length}):</p>
+                            <button
+                              onClick={handleDesignFilePreview}
+                              className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors flex items-center gap-1"
+                            >
+                              <FileText className="w-3 h-3" />
+                              Preview All
+                            </button>
+                          </div>
                           {uploadedFiles.map((file, idx) => (
                             <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
                               <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -693,6 +759,20 @@ export default function DesignerOrdersTablePage() {
         fileName={currentUploadFileName}
         fileSize={currentUploadFileSize}
         show={showUploadProgress}
+      />
+
+      {/* Design File Preview Modal */}
+      <DesignFilePreviewModal
+        isOpen={showDesignPreview}
+        onClose={() => setShowDesignPreview(false)}
+        orderId={selected?.id?.toString() || ""}
+        files={previewFiles.map(f => ({
+          file_id: f.file_id,
+          file_name: f.file_name,
+          file_size: f.file_size,
+          mime_type: f.mime_type
+        }))}
+        orderCode={selected?.orderCode || ""}
       />
     </div>
   );

@@ -8,8 +8,9 @@ import { ordersApi, Order } from "@/lib/orders-api";
 import { getApiBaseUrl } from "@/lib/env";
 import { toast } from "react-hot-toast";
 import { Trash2, CheckCircle, XCircle, Clock, FileText, User, Calendar, Upload, Send, Package, Eye } from "lucide-react";
-import DesignFilePreview from '@/app/components/DesignFilePreview';
-import { requestDesignApproval, sendToProduction, uploadOrderFile, getOrderFiles } from "@/lib/workflowApi";
+import DesignFilePreviewModal from '@/app/components/modals/DesignFilePreviewModal';
+import { requestDesignApproval, sendToProduction, uploadOrderFile } from "@/lib/workflowApi";
+import { getOrderFilesCached, getFilesByStage, orderFileToReference, clearOrderCache } from "@/lib/backendFileStorage";
 import UploadProgressBar from "@/app/components/UploadProgressBar";
 
 /* ===== Types ===== */
@@ -65,11 +66,47 @@ export default function DesignerView() {
   const [approvalNotes, setApprovalNotes] = useState("");
   const [orderDetails, setOrderDetails] = useState<Order | null>(null);
   const [showDesignPreview, setShowDesignPreview] = useState(false);
-  const [previewFiles, setPreviewFiles] = useState<any[]>([]);
+  const [previewFiles, setPreviewFiles] = useState<Array<{file_id: number, file_name: string, file_size: number, mime_type: string, url?: string}>>([]);
   const [isApprovalPending, setIsApprovalPending] = useState(false);
   const [isDesignApproved, setIsDesignApproved] = useState(false);
   const [isDesignRejected, setIsDesignRejected] = useState(false);
   const [approvalStatus, setApprovalStatus] = useState<string | null>(null);
+  
+  // Backend file storage state
+  const [orderFiles, setOrderFiles] = useState<{ [orderId: number]: any[] }>({});
+  const [loadingFiles, setLoadingFiles] = useState<{ [orderId: number]: boolean }>({});
+  
+  // Load files for an order
+  const loadOrderFiles = async (orderId: number, forceRefresh = false) => {
+    if (!forceRefresh && (orderFiles[orderId] || loadingFiles[orderId])) {
+      return; // Already loaded or loading (unless force refresh)
+    }
+    
+    setLoadingFiles(prev => ({ ...prev, [orderId]: true }));
+    
+    try {
+      if (forceRefresh) {
+        console.log(`🔄 Force refreshing files for order ${orderId}`);
+        clearOrderCache(orderId);
+      }
+      
+      console.log(`📡 Loading files for order ${orderId}`);
+      const files = await getOrderFilesCached(orderId);
+      console.log(`📁 Loaded ${files.length} files for order ${orderId}:`, files);
+      
+      // Filter for design files specifically
+      const designFiles = getFilesByStage(files, 'design');
+      console.log(`🎨 Found ${designFiles.length} design files:`, designFiles);
+      
+      setOrderFiles(prev => ({ ...prev, [orderId]: files }));
+      console.log(`✅ Loaded ${files.length} files for order ${orderId}`);
+    } catch (error) {
+      console.error(`❌ Failed to load files for order ${orderId}:`, error);
+      setOrderFiles(prev => ({ ...prev, [orderId]: [] }));
+    } finally {
+      setLoadingFiles(prev => ({ ...prev, [orderId]: false }));
+    }
+  };
 
   // Upload progress bar states
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -187,8 +224,22 @@ export default function DesignerView() {
         setError(null);
         const apiOrders = await ordersApi.getOrders();
 
+        // Filter orders for designer - only show orders explicitly sent to designer
+        const currentUsername = typeof window !== 'undefined' ? localStorage.getItem('admin_username') || '' : '';
+        const designerOrders = apiOrders.filter((order: Order) => {
+          // Show orders that have been explicitly assigned to this designer
+          if (order.assigned_designer === currentUsername) return true;
+          
+          // Show orders with status indicating they're in designer workflow
+          if (order.status === 'sent_to_designer') return true;
+          if (order.status === 'sent_for_approval') return true;
+          
+          // Don't show orders just because stage is 'design' - they must be explicitly sent
+          return false;
+        });
+
         // Convert API orders to Row format using consistent mapping
-        const convertedOrders = mapOrders(apiOrders);
+        const convertedOrders = mapOrders(designerOrders);
 
         setOrders(convertedOrders);
       } catch (err: any) {
@@ -292,6 +343,9 @@ export default function DesignerView() {
     setSelected(row);
     setIsOpen(true);
     
+    // Load files for this order (force refresh to get latest files)
+    loadOrderFiles(row.id, true);
+    
     try {
       // Load full order details to get products and specifications
       const orderData = await ordersApi.getOrder(row.id);
@@ -328,11 +382,37 @@ export default function DesignerView() {
     [],
   );
 
-  const handleFileUpload = (files: FileList | null) => {
-    if (files) {
-      const fileArray = Array.from(files);
-      setUploadedFiles(prev => [...prev, ...fileArray]);
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files || !selected) return;
+    
+    const fileArray = Array.from(files);
+    setUploadedFiles(prev => [...prev, ...fileArray]);
+    
+    // Upload files immediately to backend
+    console.log('🔄 Uploading files immediately to backend...');
+    for (const file of fileArray) {
+      try {
+        console.log('📤 Uploading file:', file.name);
+        const response = await uploadOrderFile(
+          selected.id,
+          file,
+          'design',
+          'design',
+          `Design file: ${file.name}`,
+          undefined,
+          ['admin', 'sales', 'designer']
+        );
+        console.log('✅ File uploaded successfully:', response);
+        
+        // Refresh the order files to show the newly uploaded file
+        await loadOrderFiles(selected.id);
+      } catch (error) {
+        console.error('❌ Failed to upload file:', error);
+        toast.error(`Failed to upload ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }
+    
+    toast.success(`Successfully uploaded ${fileArray.length} file(s)`);
   };
 
   const removeFile = (index: number) => {
@@ -594,57 +674,85 @@ export default function DesignerView() {
     }
   };
 
-  const handleDesignFilePreview = (files: any[]) => {
-    // Transform backend design_files_manifest data to match DesignFilePreview expectations
-    const transformedFiles = files.map((file: any) => {
-      let blob = null;
-      let content = null;
+  const handleDesignFilePreview = async (files?: any[]) => {
+    console.log('🎯 handleDesignFilePreview called with:', { selected, files });
+    
+    if (!selected) {
+      console.error('❌ No selected order');
+      toast.error('No order selected');
+      return;
+    }
+    
+    try {
+      console.log('🔍 Loading design files for preview...');
+      console.log('📋 Selected order ID:', selected.id);
       
-      // Handle base64 encoded data
-      if (file.data && typeof file.data === 'string') {
-        try {
-          // Check if it's base64 encoded
-          const base64Match = file.data.match(/^data:([A-Za-z0-9+/]+);base64,(.+)$/);
-          if (base64Match) {
-            const [_, mimeType, base64Data] = base64Match;
-            const binaryData = atob(base64Data);
-            const bytes = new Uint8Array(binaryData.length);
-            for (let i = 0; i < binaryData.length; i++) {
-              bytes[i] = binaryData.charCodeAt(i);
-            }
-            blob = new Blob([bytes], { type: mimeType });
-            content = file.data; // Keep original base64 for API usage
-          } else {
-            // Assume it's already base64 data
-            const binaryData = atob(file.data);
-            const bytes = new Uint8Array(binaryData.length);
-            for (let i = 0; i < binaryData.length; i++) {
-              bytes[i] = binaryData.charCodeAt(i);
-            }
-            blob = new Blob([bytes], { type: file.type || 'application/octet-stream' });
-            content = file.data;
-          }
-        } catch (error) {
-          console.error('Failed to decode base64 data for file:', file.name, error);
-        }
+      // If files are passed directly (from button click), use them
+      if (files && files.length > 0) {
+        console.log('📁 Using files passed from button click:', files);
+        
+        const transformedFiles = files.map((file, index) => ({
+          file_id: file.id || file.file_id || index + 1,
+          file_name: file.file_name || file.name || 'Unknown File',
+          file_size: file.file_size || file.size || 0,
+          mime_type: file.mime_type || file.type || 'application/octet-stream',
+          url: file.file_url || file.url || ''
+        }));
+        
+        console.log('✅ Transformed files for preview:', transformedFiles);
+        console.log('🚀 Setting preview files and opening modal...');
+        
+        setPreviewFiles(transformedFiles);
+        setShowDesignPreview(true);
+        
+        console.log('✅ Preview modal should now be open');
+        return;
       }
       
-      return {
-        name: file.name || 'Unknown File',
-        size: file.size || 0,
-        type: file.type || 'application/octet-stream',
-        url: file.url || null, // May not be available from backend
-        blob: blob,
-        content: content, // Keep base64 data for fallback
-        id: file.id || null, // Backend file ID for secure operations
-        order_file_id: file.order_file_id || null,
-        lastModified: file.lastModified || Date.now()
-      };
-    });
-    
-    console.log('Transformed files for preview:', transformedFiles);
-    setPreviewFiles(transformedFiles);
-    setShowDesignPreview(true);
+      // Load files from backend using the new caching system
+      try {
+        const backendFiles = await getOrderFilesCached(selected.id);
+        console.log('📁 Backend files loaded:', backendFiles);
+        
+        // Filter for design files
+        const designFiles = getFilesByStage(backendFiles, 'design');
+        console.log('🎨 Design files found:', designFiles);
+        
+        if (designFiles.length === 0) {
+          console.warn('⚠️ No design files found for this order');
+          toast.error('No design files found for this order');
+          return;
+        }
+        
+        // Transform to match DesignFilePreviewModal interface
+        const transformedFiles = designFiles.map(file => {
+          console.log(`🔍 DEBUG: File ${file.id} (${file.file_name}) file_url:`, file.file_url);
+          return {
+            file_id: file.id,
+            file_name: file.file_name,
+            file_size: file.file_size,
+            mime_type: file.mime_type,
+            url: file.file_url
+          };
+        });
+        
+        console.log('✅ Transformed files for preview:', transformedFiles);
+        console.log('🚀 Setting preview files and opening modal...');
+        
+        setPreviewFiles(transformedFiles);
+        setShowDesignPreview(true);
+        
+        console.log('✅ Preview modal should now be open');
+        console.log('🔍 Current modal state:', { showDesignPreview: true, previewFilesCount: transformedFiles.length });
+        
+      } catch (apiError) {
+        console.error('❌ Failed to load files from backend:', apiError);
+        toast.error('Failed to load design files for preview');
+      }
+    } catch (error) {
+      console.error('❌ Failed to load design files:', error);
+      toast.error('Failed to load design files for preview');
+    }
   };
 
   const ALL = orders;
@@ -1157,19 +1265,23 @@ export default function DesignerView() {
                                 </div>
 
                                 {/* Design Files */}
-                                {item.design_files_manifest && item.design_files_manifest.length > 0 && (
-                                  <div className="mt-3">
-                                    <p className="text-sm font-medium text-gray-700 mb-2">Design Files:</p>
-                                    <div className="space-y-2">
-                                      {item.design_files_manifest.map((file: any, fileIndex: number) => (
+                                {(() => {
+                                  if (!selected) return null;
+                                  const files = orderFiles[selected.id] || [];
+                                  const designFiles = files.filter(f => f.stage === 'design');
+                                  return designFiles.length > 0 && (
+                                    <div className="mt-3">
+                                      <p className="text-sm font-medium text-gray-700 mb-2">Design Files ({designFiles.length}):</p>
+                                      <div className="space-y-2">
+                                        {designFiles.map((file: any, fileIndex: number) => (
                                         <div key={fileIndex} className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex items-center justify-between">
                                           <div className="flex items-center gap-3">
                                             <div className="flex-shrink-0">
-                                              {file.type?.startsWith('image/') ? (
+                                              {file.mime_type?.startsWith('image/') ? (
                                                 <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
                                                   <FileText className="w-4 h-4 text-green-600" />
                                                 </div>
-                                              ) : file.type === 'application/pdf' ? (
+                                              ) : file.mime_type === 'application/pdf' ? (
                                                 <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
                                                   <FileText className="w-4 h-4 text-red-600" />
                                                 </div>
@@ -1180,15 +1292,18 @@ export default function DesignerView() {
                                               )}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                              <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
+                                              <p className="text-sm font-medium text-gray-900 truncate">{file.file_name}</p>
                                               <p className="text-xs text-gray-500">
-                                                {file.size ? `${Math.round(file.size / 1024)} KB` : 'Unknown size'} • 
-                                                {file.type || 'Unknown type'}
+                                                {file.file_size ? `${Math.round(file.file_size / 1024)} KB` : 'Unknown size'} • 
+                                                {file.mime_type || 'Unknown type'}
                                               </p>
                                             </div>
                                           </div>
                                           <button
-                                            onClick={() => handleDesignFilePreview([file])}
+                                            onClick={() => {
+                                              console.log('🔍 Preview button clicked for file:', file);
+                                              handleDesignFilePreview([file]);
+                                            }}
                                             className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors flex items-center gap-1"
                                           >
                                             <Eye className="w-4 h-4" />
@@ -1196,26 +1311,45 @@ export default function DesignerView() {
                                           </button>
                                         </div>
                                       ))}
-                                      <button
-                                        onClick={() => handleDesignFilePreview(item.design_files_manifest || [])}
-                                        className="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-                                      >
-                                        <Eye className="w-4 h-4" />
-                                        View All Design Files
-                                      </button>
+                                        <button
+                                          onClick={() => {
+                                            if (!selected) return;
+                                            console.log('🔍 View All Design Files button clicked for order:', selected.id);
+                                            const allDesignFiles = orderFiles[selected.id] || [];
+                                            const designFiles = allDesignFiles.filter(f => f.stage === 'design');
+                                            handleDesignFilePreview(designFiles);
+                                          }}
+                                          className="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                                        >
+                                          <Eye className="w-4 h-4" />
+                                          View All Design Files
+                                        </button>
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
+                                  );
+                                })()}
 
                                 {/* Show when no design files */}
-                                {(!item.design_files_manifest || item.design_files_manifest.length === 0) && (
-                                  <div className="mt-3">
-                                    <div className="bg-gray-100 border border-gray-200 rounded-lg p-3 text-center">
-                                      <FileText className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                                      <p className="text-sm text-gray-500">No design files uploaded for this product</p>
+                                {(() => {
+                                  if (!selected) return null;
+                                  const files = orderFiles[selected.id] || [];
+                                  const designFiles = files.filter(f => f.stage === 'design');
+                                  return designFiles.length === 0 && (
+                                    <div className="mt-3">
+                                      <div className="bg-gray-100 border border-gray-200 rounded-lg p-3 text-center">
+                                        <FileText className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                                        <p className="text-sm text-gray-500 mb-3">No design files uploaded for this order</p>
+                                        <button
+                                          onClick={() => loadOrderFiles(selected.id, true)}
+                                          disabled={loadingFiles[selected.id]}
+                                          className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                          {loadingFiles[selected.id] ? 'Refreshing...' : 'Refresh Files'}
+                                        </button>
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
+                                  );
+                                })()}
                               </div>
                             </div>
                           </div>
@@ -1223,6 +1357,36 @@ export default function DesignerView() {
                       </div>
                     </div>
                   )}
+
+                  {/* Preview All Design Files Button */}
+                  {(() => {
+                    if (!selected) return null;
+                    const files = orderFiles[selected.id] || [];
+                    const designFiles = files.filter(f => f.stage === 'design');
+                    return designFiles.length > 0 && (
+                      <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="text-sm font-medium text-blue-900">Design Files Available</h4>
+                            <p className="text-xs text-blue-700 mt-1">
+                              {designFiles.length} design file{designFiles.length !== 1 ? 's' : ''} uploaded for this order
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (!selected) return;
+                              console.log('🔍 Preview All Design Files button clicked for order:', selected.id);
+                              handleDesignFilePreview(designFiles);
+                            }}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                          >
+                            <Eye className="w-4 h-4" />
+                            Preview All Files
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Design Upload Section */}
                   {showFileUpload && (
@@ -1367,17 +1531,27 @@ export default function DesignerView() {
             </Dialog.Panel>
           </div>
 
-          {/* Design File Preview Modal */}
-          {showDesignPreview && (
-            <DesignFilePreview
-              files={previewFiles}
-                orderId={orderDetails?.id || undefined}
-              onClose={() => setShowDesignPreview(false)}
-            />
-          )}
         </Dialog>
       </Transition>
 
+      {/* Design File Preview Modal - Moved outside the main dialog */}
+      <DesignFilePreviewModal
+        isOpen={showDesignPreview}
+        onClose={() => {
+          console.log('🔒 Closing preview modal');
+          setShowDesignPreview(false);
+        }}
+        orderId={selected?.id?.toString() || ""}
+        files={previewFiles.map(f => ({
+          file_id: f.file_id,
+          file_name: f.file_name,
+          file_size: f.file_size,
+          mime_type: f.mime_type,
+          url: f.url
+        }))}
+        orderCode={selected?.orderCode || ""}
+      />
+      
       <UploadProgressBar
         progress={uploadProgress}
         isComplete={isUploadComplete}

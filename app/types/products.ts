@@ -29,6 +29,23 @@ export interface ConfiguredProduct {
     ready: boolean;
     needCustom: boolean;
     customRequirements: string;
-    files: Array<{ name: string; size: number; type: string }>;
+    files?: Array<{ name: string; size: number; type: string; file?: File }>; // Legacy - kept for backward compatibility
+    uploadedFiles?: Array<{
+      id: number;
+      order: number;
+      order_code: string;
+      file_url: string;
+      file_name: string;
+      file_type: string;
+      file_size: number;
+      mime_type: string;
+      uploaded_by: string;
+      uploaded_by_role: string;
+      stage: string;
+      visible_to_roles: string[];
+      description: string;
+      product_related: string;
+      uploaded_at: string;
+    }>;
   };
 }

@@ -10,6 +10,7 @@ import OrderIntakeForm, {
 } from "@/app/components/order-stages/OrderIntakeForm";
 import DashboardNavbar from "@/app/components/navbar/DashboardNavbar";
 import { ordersApi, Order } from "@/lib/orders-api";
+import { getApiBaseUrl } from "@/lib/env";
 import { toast } from "react-hot-toast";
 import { Trash2, CheckCircle, XCircle, Clock, FileText, User, Calendar, Download, Eye, AlertCircle } from "lucide-react";
 import ProductSearchModal from "@/app/components/modals/ProductSearchModal";
@@ -148,8 +149,110 @@ export default function OrdersTablePage() {
       quantity: item.quantity,
       attributes: item.attributes,
       sku: item.sku,
+      unit_price: item.price, // Include unit price
+      line_total: item.price * item.quantity, // Calculate line total
       customRequirements: item.customRequirements || '',
+      design_ready: item.design?.ready || false,
+      design_need_custom: item.design?.needCustom || false,
+      design_files_manifest: item.design?.files?.map(f => ({
+        id: f.name, // Use name as temporary ID
+        name: f.name,
+        size: f.size,
+        type: f.type
+      })) || []
     }));
+
+  // Helper function to upload design files for a product
+  const uploadDesignFilesForProduct = async (orderId: number, product: ConfiguredProduct) => {
+    if (!product.design?.files || product.design.files.length === 0) {
+      console.log(`ℹ️ No design files to upload for product: ${product.name}`);
+      return;
+    }
+
+    // Validate orderId
+    if (!orderId || orderId === undefined || orderId === null) {
+      throw new Error(`Invalid order ID: ${orderId} for product: ${product.name}`);
+    }
+
+    console.log(`📁 Uploading ${product.design.files.length} design files for product: ${product.name} to order: ${orderId}`);
+    
+    try {
+      // Upload each file individually
+      const uploadPromises = product.design.files.map(async (fileInfo) => {
+        if (!fileInfo.file) {
+          console.warn(`⚠️ No File object found for ${fileInfo.name}, skipping upload`);
+          return null;
+        }
+
+        const formData = new FormData();
+        formData.append('file', fileInfo.file);
+        formData.append('file_type', 'design'); // Required field with valid choice
+        formData.append('stage', 'design');
+        formData.append('description', `Design file for ${product.name}`);
+        formData.append('product_related', product.name);
+              // Send visible_to_roles as a JSON string
+              formData.append('visible_to_roles', JSON.stringify(['admin', 'sales', 'designer', 'production']));
+
+        const response = await fetch(`${getApiBaseUrl()}/api/orders/${orderId}/files/upload/`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+          },
+          body: formData
+        });
+
+        if (!response.ok) {
+          let errorMessage = `Failed to upload ${fileInfo.name} (Status: ${response.status})`;
+          
+          try {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const errorData = await response.json();
+              errorMessage = errorData.error || errorData.message || errorMessage;
+            } else {
+              // If it's not JSON, try to get text content
+              const textContent = await response.text();
+              console.error('Non-JSON error response:', textContent.substring(0, 200));
+              errorMessage = `Upload failed: ${response.status} ${response.statusText}`;
+            }
+          } catch (parseError) {
+            console.error('Failed to parse error response:', parseError);
+            errorMessage = `Upload failed: ${response.status} ${response.statusText}`;
+          }
+          
+          throw new Error(errorMessage);
+        }
+
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.warn('Response is not JSON, treating as success');
+          return { success: true, message: 'File uploaded successfully' };
+        }
+
+        const result = await response.json();
+        console.log(`✅ Successfully uploaded: ${fileInfo.name}`, result);
+        console.log(`📋 Upload details:`, {
+          orderId,
+          fileName: fileInfo.name,
+          fileType: 'design',
+          stage: 'design',
+          productName: product.name,
+          result
+        });
+        return result;
+      });
+
+      const results = await Promise.all(uploadPromises);
+      const successfulUploads = results.filter(result => result !== null);
+      
+      console.log(`✅ Successfully uploaded ${successfulUploads.length}/${product.design.files.length} files for product: ${product.name}`);
+      return successfulUploads;
+    } catch (error) {
+      console.error(`❌ Failed to upload design files for product: ${product.name}`, error);
+      throw error;
+    }
+  };
 
   const handleAddProductClick = (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -531,12 +634,40 @@ export default function OrdersTablePage() {
   try {
     setLoading(true);
     setError(null);
-    await ordersApi.createOrder({
+    const createdOrder = await ordersApi.createOrder({
       clientName,
       specs,
       urgency,
       items: itemsPayload,
     });
+
+    console.log('✅ Order created successfully:', createdOrder);
+    
+    // Extract the actual order data from the response
+    // Handle both wrapped and direct response formats
+    const orderData = (createdOrder as any).data || createdOrder;
+    const orderId = orderData.id;
+    
+    console.log('Order ID:', orderId);
+    console.log('Order structure:', JSON.stringify(createdOrder, null, 2));
+
+    // Check if order was created successfully and has an ID
+    if (!orderData || !orderId) {
+      throw new Error('Order creation failed - no ID returned');
+    }
+
+    // Upload design files for products that have them
+    console.log('🔄 Starting file uploads for created order:', orderId);
+    const fileUploadPromises = selectedProducts.map(product => 
+      uploadDesignFilesForProduct(orderId, product).catch(error => {
+        console.error(`Failed to upload files for product ${product.name}:`, error);
+        // Don't throw here, just log the error - we want the order to be created even if file upload fails
+        return null;
+      })
+    );
+
+    await Promise.all(fileUploadPromises);
+    console.log('✅ All file uploads completed for order:', orderId);
 
     const apiOrders = await ordersApi.getOrders();
     const convertedOrders = mapOrders(apiOrders);
@@ -576,28 +707,59 @@ export default function OrdersTablePage() {
   }
 
   try {
+    let orderId: number;
+    
     if (!data?._orderId) {
       const created = await ordersApi.createOrder({ clientName, specs, urgency, items: itemsPayload });
+      console.log('✅ Order created in ensureOrderForCustom:', created);
+      
+      // Extract the actual order data from the response
+      // Handle both wrapped and direct response formats
+      const orderData = (created as any).data || created;
+      const createdOrderId = orderData.id;
+      
+      console.log('Created order ID:', createdOrderId);
+      
+      if (!orderData || !createdOrderId) {
+        throw new Error('Order creation failed - no ID returned');
+      }
+      
+      orderId = createdOrderId;
       setCustomFormData((prev) => ({
         ...(prev || {}),
-        _orderId: created.id,
-        orderId: created.order_id,
+        _orderId: createdOrderId,
+        orderId: orderData.order_code || orderData.order_id,
       } as any));
-      return created.id;
+    } else {
+      orderId = data._orderId as number;
+      console.log('🔄 Updating existing order:', orderId);
+      await ordersApi.updateOrder(orderId, {
+        client_name: clientName,
+        specs,
+        urgency,
+        items: itemsPayload,
+      });
     }
 
-    await ordersApi.updateOrder(data._orderId as number, {
-      client_name: clientName,
-      specs,
-      urgency,
-      items: itemsPayload,
-    });
-    return data._orderId as number;
+    // Upload design files for products that have them
+    console.log('🔄 Starting file uploads for order:', orderId);
+    const fileUploadPromises = selectedProducts.map(product => 
+      uploadDesignFilesForProduct(orderId, product).catch(error => {
+        console.error(`Failed to upload files for product ${product.name}:`, error);
+        // Don't throw here, just log the error - we want the order to be saved even if file upload fails
+        return null;
+      })
+    );
+
+    await Promise.all(fileUploadPromises);
+    console.log('✅ All file uploads completed for order:', orderId);
+
+    return orderId;
   } catch (err: any) {
     toast.error(err.message || "Failed to save draft");
     return null;
   }
-};;
+};
 
   const handleSaveDraftCustom = async () => {
     if (savingDraft) return;
@@ -1045,6 +1207,55 @@ export default function OrdersTablePage() {
         console.log('=== SAVING ORDER DATA ===');
         console.log('Order update data:', orderUpdateData);
         await ordersApi.updateOrder(selected.id, orderUpdateData);
+        
+        // Handle workflow transitions using dedicated endpoints
+        if (quotationData?.sendTo === "Designer") {
+          console.log('🚀 Sending order to designer...');
+          try {
+            const sendToDesignerResponse = await fetch(`${getApiBaseUrl()}/api/orders/${selected.id}/send-to-designer/`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+              },
+              body: JSON.stringify({})
+            });
+            
+            if (!sendToDesignerResponse.ok) {
+              const errorData = await sendToDesignerResponse.json();
+              throw new Error(errorData.error || 'Failed to send order to designer');
+            }
+            
+            const sendToDesignerResult = await sendToDesignerResponse.json();
+            console.log('✅ Send to designer response:', sendToDesignerResult);
+          } catch (error) {
+            console.error('❌ Failed to send to designer:', error);
+            toast.error(`Failed to send order to designer: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        } else if (quotationData?.sendTo === "Production") {
+          console.log('🚀 Sending order to production...');
+          try {
+            const sendToProductionResponse = await fetch(`${getApiBaseUrl()}/api/orders/${selected.id}/send-to-production/`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+              },
+              body: JSON.stringify({})
+            });
+            
+            if (!sendToProductionResponse.ok) {
+              const errorData = await sendToProductionResponse.json();
+              throw new Error(errorData.error || 'Failed to send order to production');
+            }
+            
+            const sendToProductionResult = await sendToProductionResponse.json();
+            console.log('✅ Send to production response:', sendToProductionResult);
+          } catch (error) {
+            console.error('❌ Failed to send to production:', error);
+            toast.error(`Failed to send order to production: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        }
 
                         // Always update quotation data when saving
                         if (quotationData) {
@@ -1079,9 +1290,16 @@ export default function OrdersTablePage() {
 
                         setSavedOrders(convertedOrders);
                         setOrders(convertedOrders);
-                        setIsOpen(false);
-                        setQuotationData({}); // Clear quotation data after successful save
-                        toast.success("Order and quotation updated successfully!");
+                          setIsOpen(false);
+                          setQuotationData({}); // Clear quotation data after successful save
+                         
+                          // Show appropriate success message based on where order was sent
+                          const successMessage = quotationData?.sendTo === "Designer" 
+                            ? "Order sent to Designer successfully!"
+                            : quotationData?.sendTo === "Production"
+                            ? "Order sent to Production successfully!"
+                            : "Order and quotation updated successfully!";
+                          toast.success(successMessage);
                       } catch (err: any) {
                         toast.error(`Failed to update order: ${err.message}`);
                         console.error("Error updating order:", err);

@@ -5,7 +5,7 @@ import { Save, Loader2, ArrowLeft } from "lucide-react";
 import { BaseProduct, ConfiguredProduct, ProductAttribute } from "@/app/types/products";
 import { getProductAttributes } from "@/app/lib/products";
 import DesignUploadSection from "./DesignUploadSection";
-import { saveFileMetaToStorage, loadFileMetaFromStorage, clearFilesFromStorage } from "@/app/lib/fileStorage";
+import { OrderFile, uploadFileToBackend, UploadProgress } from "@/lib/backendFileUpload";
 
 export interface ProductConfigModalProps {
   open: boolean;
@@ -17,6 +17,7 @@ export interface ProductConfigModalProps {
   initialPrice?: number;
   editingProductId?: string;
   onBack?: () => void; // New prop for back button
+  temporaryOrderId?: number; // New prop for temporary order ID for file uploads
 }
 
 export default function ProductConfigModal({
@@ -28,7 +29,8 @@ export default function ProductConfigModal({
   initialAttributes = {},
   initialPrice,
   editingProductId,
-  onBack
+  onBack,
+  temporaryOrderId
 }: ProductConfigModalProps) {
   
   // Memoize baseProductId to prevent unnecessary re-renders
@@ -49,49 +51,50 @@ export default function ProductConfigModal({
   
   // Design upload state
   const [files, setFiles] = useState<File[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{
+    id: number;
+    file: File;
+    name: string;
+    size: number;
+    type: string;
+    uploadProgress: number;
+    status: 'ready';
+  }>>([]);
   const [readyDesign, setReadyDesign] = useState(false);
   const [needCustom, setNeedCustom] = useState(false);
   const [customText, setCustomText] = useState("");
+  
+  // Upload progress state
+  const [uploadProgress, setUploadProgress] = useState<Record<string, UploadProgress>>({});
+  const [isUploading, setIsUploading] = useState(false);
 
-  // Load design files from localStorage on component mount
-  useEffect(() => {
-    if (baseProduct) {
-      // Use editingProductId if available (when editing), otherwise use baseProduct.id (when creating new)
-      const productKey = editingProductId || baseProduct.id;
-      const storageKey = `orderLifecycle_designFiles_${productKey}`;
-      const storedFiles = loadFileMetaFromStorage(storageKey);
-      if (storedFiles.length > 0) {
-        // Convert stored file metadata back to File objects with proper name
-        const loadedFiles = storedFiles.map(meta => {
-          const file = new File([], meta.name, { 
-            type: meta.type,
-            lastModified: meta.lastModified
-          });
-          // Ensure the name property is properly set
-          Object.defineProperty(file, 'name', {
-            value: meta.name,
-            writable: false
-          });
-          return file;
-        });
-        setFiles(loadedFiles);
-      }
+  // Handle file upload to backend
+  const handleFileUpload = useCallback(async (newFiles: File[]) => {
+    if (newFiles.length === 0) {
+      return;
     }
-  }, [baseProductId, editingProductId]);
 
-  // Save design files to localStorage whenever files change
+    // Store files locally for later upload when order is created
+    const newLocalFiles = newFiles.map(file => ({
+      id: Date.now() + Math.random(), // Temporary ID
+      file: file,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      uploadProgress: 100, // Mark as ready for upload
+      status: 'ready' as const
+    }));
+
+    setUploadedFiles(prev => [...prev, ...newLocalFiles]);
+    console.log(`✅ Added ${newFiles.length} files for later upload`);
+  }, []);
+
+  // Handle file changes - store files locally for later upload
   useEffect(() => {
-    if (baseProduct && files.length > 0) {
-      // Use editingProductId if available (when editing), otherwise use baseProduct.id (when creating new)
-      const productKey = editingProductId || baseProduct.id;
-      const storageKey = `orderLifecycle_designFiles_${productKey}`;
-      saveFileMetaToStorage(storageKey, files);
-    } else if (baseProduct) {
-      const productKey = editingProductId || baseProduct.id;
-      const storageKey = `orderLifecycle_designFiles_${productKey}`;
-      clearFilesFromStorage(storageKey);
+    if (files.length > 0) {
+      handleFileUpload(files);
     }
-  }, [files, baseProductId, editingProductId]);
+  }, [files, handleFileUpload]);
 
   // Price calculation helpers
   const toQty = (v: string) => {
@@ -177,21 +180,10 @@ export default function ProductConfigModal({
       
       // Load design data if editing existing product
       if (editingProductId && baseProduct) {
-        // Load custom requirements from localStorage
-        const requirementsKey = `orderLifecycle_customRequirements_${editingProductId}`;
-        const storedRequirements = localStorage.getItem(requirementsKey);
-        if (storedRequirements) {
-          setCustomText(storedRequirements);
-        }
+        // Custom requirements are now stored in the product configuration, not localStorage
         
         // Load design checkbox states from localStorage
-        const readyDesignKey = `orderLifecycle_readyDesign_${editingProductId}`;
-        const storedReadyDesign = localStorage.getItem(readyDesignKey);
-        setReadyDesign(storedReadyDesign === 'true');
-        
-        const needCustomKey = `orderLifecycle_needCustom_${editingProductId}`;
-        const storedNeedCustom = localStorage.getItem(needCustomKey);
-        setNeedCustom(storedNeedCustom === 'true');
+        // Design preferences are now stored in the product configuration, not localStorage
       }
     } else {
       // Clear all state when modal closes
@@ -205,12 +197,9 @@ export default function ProductConfigModal({
       setNeedCustom(false);
       setCustomText("");
       
-      // Clear localStorage for the current product if it exists
-      if (baseProduct) {
-        const productKey = editingProductId || baseProduct.id;
-        const storageKey = `orderLifecycle_designFiles_${productKey}`;
-        clearFilesFromStorage(storageKey);
-      }
+      // Clear uploaded files state
+      setUploadedFiles([]);
+      setUploadProgress({});
     }
   }, [open, initialQty, initialPrice, editingProductId, baseProductId, initialAttributesString]); // Using memoized values to prevent infinite re-renders
 
@@ -271,7 +260,7 @@ export default function ProductConfigModal({
     }
 
     // Validate design files - now mandatory for all products
-    if (files.length === 0) {
+    if (uploadedFiles.length === 0) {
       setError("Design files are mandatory. Please upload at least one design file.");
       return;
     }
@@ -292,23 +281,16 @@ export default function ProductConfigModal({
         ready: readyDesign,
         needCustom: needCustom,
         customRequirements: needCustom ? customText : "",
-        files: files.map(f => ({ name: f.name, size: f.size, type: f.type }))
+        files: uploadedFiles.map(f => ({
+          name: f.name,
+          size: f.size,
+          type: f.type,
+          file: f.file // Include the actual File object for upload
+        }))
       }
     };
 
-    // Save design data to localStorage for later retrieval when editing
-    const requirementsKey = `orderLifecycle_customRequirements_${productId}`;
-    const readyDesignKey = `orderLifecycle_readyDesign_${productId}`;
-    const needCustomKey = `orderLifecycle_needCustom_${productId}`;
-    
-    if (needCustom && customText) {
-      localStorage.setItem(requirementsKey, customText);
-    } else {
-      localStorage.removeItem(requirementsKey);
-    }
-    
-    localStorage.setItem(readyDesignKey, readyDesign.toString());
-    localStorage.setItem(needCustomKey, needCustom.toString());
+    // Design data is now stored in the uploaded files, no need for localStorage
 
     onConfirm(configuredProduct);
   };
@@ -534,6 +516,51 @@ export default function ProductConfigModal({
                   customText={customText}
                   setCustomText={setCustomText}
                 />
+                
+                {/* Upload Progress Display */}
+                {isUploading && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 className="text-sm font-medium text-blue-900 mb-2">Uploading Files...</h4>
+                    {Object.values(uploadProgress).map((progress, index) => (
+                      <div key={index} className="mb-2">
+                        <div className="flex justify-between text-sm text-blue-800 mb-1">
+                          <span>{progress.fileName}</span>
+                          <span>{Math.round(progress.progress)}%</span>
+                        </div>
+                        <div className="w-full bg-blue-200 rounded-full h-2">
+                          <div 
+                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${progress.progress}%` }}
+                          ></div>
+                        </div>
+                        {progress.error && (
+                          <p className="text-xs text-red-600 mt-1">{progress.error}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Uploaded Files Display */}
+                {uploadedFiles.length > 0 && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <h4 className="text-sm font-medium text-green-900 mb-2">Uploaded Files ({uploadedFiles.length})</h4>
+                    <div className="space-y-2">
+                      {uploadedFiles.map((file) => (
+                        <div key={file.id} className="flex items-center justify-between bg-white rounded-lg p-2">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-sm text-gray-700">{file.name}</span>
+                            <span className="text-xs text-gray-500">
+                              ({Math.round(file.size / 1024)} KB)
+                            </span>
+                          </div>
+                          <span className="text-xs text-green-600">✓ Uploaded</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

@@ -36,7 +36,7 @@ export default function DesignFilePreviewModal({
   const [error, setError] = useState<string | null>(null);
   const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(new Set());
 
-  const currentFile = files[currentFileIndex];
+  const currentFile = files[currentFileIndex] || null;
 
   // Load file URLs when modal opens
   const loadFileUrls = useCallback(async () => {
@@ -51,10 +51,47 @@ export default function DesignFilePreviewModal({
           try {
             // Check if this is a backend file (has valid numeric ID)
             if (typeof file.file_id === 'number' && file.file_id > 0 && !file.content && !file.url) {
-              const backendUrl = await getDesignFileUrl(orderId, file.file_id);
-              if (backendUrl) {
-                return backendUrl;
+              try {
+                console.log(`🔍 Attempting to get backend URL for file ${file.file_name} (ID: ${file.file_id})`);
+                
+                // Try multiple direct media URL patterns (faster and doesn't require auth)
+                const urlPatterns = [
+                  `http://localhost:8000/uploads/order_files/2025/10/09/${file.file_name}`,
+                  `http://localhost:8000/uploads/order_files/2025/10/03/${file.file_name}`,
+                  `http://localhost:8000/uploads/order_files/2025/09/${file.file_name}`,
+                  `http://localhost:8000/uploads/order_files/2025/08/${file.file_name}`,
+                ];
+                
+                console.log(`🔗 Trying direct media URLs for ${file.file_name}`);
+                
+                // Test each URL pattern
+                for (const directUrl of urlPatterns) {
+                  try {
+                    console.log(`🔍 Testing URL: ${directUrl}`);
+                    const testResponse = await fetch(directUrl, { method: 'HEAD' });
+                    if (testResponse.ok) {
+                      console.log(`✅ Direct media URL works for ${file.file_name}:`, directUrl);
+                      return directUrl;
+                    }
+                  } catch (directError) {
+                    console.log(`⚠️ URL failed: ${directUrl}`, directError);
+                  }
+                }
+                
+                console.log(`⚠️ All direct URLs failed for ${file.file_name}, trying API`);
+                
+                // Fallback to API endpoint
+                const backendUrl = await getDesignFileUrl(orderId, file.file_id);
+                if (backendUrl) {
+                  console.log(`✅ Got backend URL for ${file.file_name}:`, backendUrl);
+                  return backendUrl;
+                }
+              } catch (error) {
+                console.warn(`⚠️ Failed to get backend URL for file ${file.file_name}:`, error);
+                // Continue to other URL sources - this is expected for UI-only files
               }
+            } else {
+              console.log(`ℹ️ File ${file.file_name} has no valid backend ID (${file.file_id}), skipping backend URL fetch`);
             }
             
             // Handle localStorage/temporary files
@@ -66,6 +103,7 @@ export default function DesignFilePreviewModal({
             
             // Has direct URL
             if (file.url) {
+              console.log(`✅ Using direct URL for ${file.file_name}:`, file.url);
               return file.url;
             }
             
@@ -74,8 +112,33 @@ export default function DesignFilePreviewModal({
               return URL.createObjectURL(file.blob);
             }
             
-            console.warn(`No valid file source found for ${file.file_name}`);
-            return null;
+            // For files without URLs, create a placeholder URL
+            console.warn(`No valid file source found for ${file.file_name}, creating placeholder`);
+            
+            // Create a data URL with file information as fallback
+            const placeholderContent = `
+              <html>
+                <head><title>${file.file_name}</title></head>
+                <body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+                  <h2>📄 ${file.file_name}</h2>
+                  <p><strong>Size:</strong> ${file.file_size ? `${Math.round(file.file_size / 1024)} KB` : 'Unknown'}</p>
+                  <p><strong>Type:</strong> ${file.mime_type || 'Unknown'}</p>
+                  <hr>
+                  <p style="color: #666;">⚠️ File preview not available</p>
+                  <p style="color: #666;">This file exists only as metadata in the order details.</p>
+                  <p style="color: #666;">The actual file may need to be uploaded to the backend.</p>
+                </body>
+              </html>
+            `;
+            
+            // Use encodeURIComponent to handle non-Latin1 characters safely
+            try {
+              return `data:text/html;base64,${btoa(unescape(encodeURIComponent(placeholderContent)))}`;
+            } catch (btoaError) {
+              console.error('btoa encoding failed, using fallback:', btoaError);
+              // Fallback: return a simple text placeholder without base64 encoding
+              return `data:text/plain;charset=utf-8,${encodeURIComponent('File preview unavailable: ' + file.file_name)}`;
+            }
           } catch (error) {
             console.error(`Failed to load URL for file ${file.file_name}:`, error);
             return null;
@@ -114,14 +177,18 @@ export default function DesignFilePreviewModal({
   }, [fileUrls]);
 
   const handlePrevFile = () => {
+    if (files.length === 0) return;
     setCurrentFileIndex(prev => prev === 0 ? files.length - 1 : prev - 1);
   };
 
   const handleNextFile = () => {
+    if (files.length === 0) return;
     setCurrentFileIndex(prev => prev === files.length - 1 ? 0 : prev + 1);
   };
 
   const handleDownload = async (file: DesignFile) => {
+    if (!file) return;
+    
     setDownloadingFiles(prev => new Set(prev).add(file.file_name));
     console.log("🔽 Downloading file:", file.file_name);
     console.log("📄 File properties:", {
@@ -149,7 +216,20 @@ export default function DesignFilePreviewModal({
       } else if (file.file_id && typeof file.file_id === 'number' && file.file_id > 0) {
         // Download backend files
         console.log("⚙️ Downloading from backend API, file_id:", file.file_id, "orderId:", orderId);
-        await downloadDesignFile(orderId, file.file_id);
+        try {
+          await downloadDesignFile(orderId, file.file_id);
+        } catch (error) {
+          console.error("❌ Backend download failed, trying fallback methods:", error);
+          // Fallback: try to create a download from file data if available
+          if (file.file_name && file.mime_type) {
+            console.log("🔄 Attempting fallback download...");
+            // Create a simple text file with file info as fallback
+            const fallbackContent = `File: ${file.file_name}\nSize: ${file.file_size || 'Unknown'} bytes\nType: ${file.mime_type}\n\nThis file could not be downloaded from the server.\nPlease contact your administrator.`;
+            downloadBase64File(btoa(fallbackContent), `${file.file_name}.txt`, 'text/plain');
+          } else {
+            throw error;
+          }
+        }
       } else {
         console.error("❌ No valid file source available for download:", file);
         alert(`Cannot download "${file.file_name}". File source not available.`);
@@ -251,28 +331,58 @@ export default function DesignFilePreviewModal({
 
     if (currentFile.mime_type.startsWith('image/')) {
       return (
-        <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg">
-          <img
-            src={currentUrl}
-            alt={currentFile.file_name}
-            className="max-h-full max-w-full object-contain"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-              e.currentTarget.parentElement!.innerHTML = '<div class="flex items-center justify-center h-64 text-gray-500"><AlertCircle class="w-8 h-8 mr-2"/>Image failed to load</div>';
-            }}
-          />
+        <div className="flex flex-col items-center justify-center h-64 bg-gray-50 rounded-lg p-6">
+          <div className="text-center">
+            <div className="text-green-600 mb-4">
+              <svg className="w-16 h-16 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Image Preview</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Click the button below to view the image in a new tab.
+            </p>
+            <div className="space-y-2">
+              <button
+                onClick={() => window.open(currentUrl, '_blank')}
+                className="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium"
+              >
+                View Image in New Tab
+              </button>
+              <p className="text-xs text-gray-400">
+                File: {currentFile.file_name}
+              </p>
+            </div>
+          </div>
         </div>
       );
     }
 
     if (currentFile.mime_type.includes('pdf')) {
       return (
-        <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg">
-          <iframe
-            src={currentUrl}
-            className="w-full h-full rounded-lg"
-            title={currentFile.file_name}
-          />
+        <div className="flex flex-col items-center justify-center h-64 bg-gray-50 rounded-lg p-6">
+          <div className="text-center">
+            <div className="text-blue-600 mb-4">
+              <svg className="w-16 h-16 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">PDF Preview</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Click the button below to open the PDF in a new tab for viewing.
+            </p>
+            <div className="space-y-2">
+              <button
+                onClick={() => window.open(currentUrl, '_blank')}
+                className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
+              >
+                Open PDF in New Tab
+              </button>
+              <p className="text-xs text-gray-400">
+                File: {currentFile.file_name}
+              </p>
+            </div>
+          </div>
         </div>
       );
     }
@@ -289,6 +399,11 @@ export default function DesignFilePreviewModal({
   };
 
   if (!isOpen) {
+    return null;
+  }
+
+  // Don't render if no files
+  if (files.length === 0) {
     return null;
   }
 
@@ -388,23 +503,38 @@ export default function DesignFilePreviewModal({
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3">
-                          {getFileIcon(currentFile.mime_type)}
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-gray-900 truncate">
-                              {currentFile.file_name}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {formatFileSize(currentFile.file_size)} • {currentFile.mime_type}
-                            </p>
+                        {currentFile ? (
+                          <div className="flex items-center gap-3">
+                            {getFileIcon(currentFile.mime_type)}
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {currentFile.file_name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {formatFileSize(currentFile.file_size)} • {currentFile.mime_type}
+                              </p>
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="flex items-center gap-3">
+                            <File className="w-8 h-8 text-gray-400" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-gray-900">
+                                No file selected
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Select a file to preview
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                       
                       <div className="flex items-center gap-2 ml-4">
-                        <button
-                          onClick={() => handleDownload(currentFile)}
-                          disabled={downloadingFiles.has(currentFile.file_name)}
+                        {currentFile && (
+                          <button
+                            onClick={() => handleDownload(currentFile)}
+                            disabled={downloadingFiles.has(currentFile.file_name)}
                           className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
                         >
                           {downloadingFiles.has(currentFile.file_name) ? (
@@ -419,6 +549,7 @@ export default function DesignFilePreviewModal({
                             </>
                           )}
                         </button>
+                        )}
                       </div>
                     </div>
                   </div>

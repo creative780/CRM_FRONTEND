@@ -96,10 +96,19 @@ export async function downloadDesignFile(
   fileId: number
 ): Promise<void> {
   try {
+    // Try multiple token types for compatibility
+    const accessToken = localStorage.getItem('access_token');
+    const adminToken = localStorage.getItem('admin_token');
+    const token = accessToken || adminToken;
+    
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+    
     const response = await fetch(`${API_BASE}/api/orders/${orderId}/design-files/${fileId}/download/`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        'Authorization': `Bearer ${token}`,
       },
     });
 
@@ -139,15 +148,30 @@ export async function getDesignFileUrl(
   fileId: number
 ): Promise<string | null> {
   try {
+    // Try multiple token types for compatibility
+    const accessToken = localStorage.getItem('access_token');
+    const adminToken = localStorage.getItem('admin_token');
+    const token = accessToken || adminToken;
+    
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+    
     const response = await fetch(`${API_BASE}/api/orders/${orderId}/design-files/${fileId}/url/`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        'Authorization': `Bearer ${token}`,
       },
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to get file URL: ${response.statusText}`);
+      if (response.status === 404) {
+        throw new Error(`File not found in backend (ID: ${fileId})`);
+      } else if (response.status === 401 || response.status === 403) {
+        throw new Error(`Unauthorized access to file (ID: ${fileId})`);
+      } else {
+        throw new Error(`Failed to get file URL: ${response.status} ${response.statusText}`);
+      }
     }
 
     const data = await response.json();
